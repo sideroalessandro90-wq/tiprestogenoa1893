@@ -1,13 +1,13 @@
 # Netlify Build Configuration - Ti Presto Genoa Mobile Optimized
 [build]
-  # Directory to publish - ROOT del repository per deploy automatico
+  # Directory to publish
   publish = "."
   
-  # Command to run before deploy (opzionale)
+  # Command to run before deploy (se necessario)
   # command = "npm run build"
   
-  # Ignore cartelle temporanee e backup nel deploy
-  ignore = "deploy_temp/, backup_*, deploy_updated/, *.md, *.ps1, *.zip"
+  # Ignore specifiche cartelle nel deploy
+  ignore = "backup_*/"
 
 # Headers per sicurezza
 [[headers]]
