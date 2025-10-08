@@ -163,26 +163,26 @@
     </h1>
   </div>
   <nav>
-    <button onclick="showSection('home')">Home</button>
-    <button onclick="showSection('booking')">Vendita Abbonamenti</button>
-    <button onclick="showSection('profile')">Profilo</button>
-    <button onclick="showSection('history')">Storico</button>
-    <button onclick="showSection('mySubscription')">Le tue Trattative<span id="mySubBadge" class="badge count" style="display:none;margin-left:6px">0</span></button>
-    <button onclick="showSection('contacts')">Contatti</button>
-    <button onclick="openFeedbackModal()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">💬 Feedback</button>
-    <button id="adminBtn" onclick="showSection('admin')" style="display:none; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;">👑 Admin Panel</button>
-    <button id="copilotAdminBtn" onclick="copilotAdminLogin()" style="display:none; background: linear-gradient(135deg, #6f42c1 0%, #563d7c 100%); color: white;" title="GitHub Copilot Admin Access">🤖 Copilot Admin</button>
+    <button type="button" onclick="showSection('home'); return false;">Home</button>
+    <button type="button" onclick="showSection('booking'); return false;">Vendita Abbonamenti</button>
+    <button type="button" onclick="showSection('profile'); return false;">Profilo</button>
+    <button type="button" onclick="showSection('history'); return false;">Storico</button>
+    <button type="button" onclick="showSection('mySubscription'); return false;">Le tue Trattative<span id="mySubBadge" class="badge count" style="display:none;margin-left:6px">0</span></button>
+    <button type="button" onclick="showSection('contacts'); return false;">Contatti</button>
+    <button type="button" onclick="openFeedbackModal(); return false;" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">💬 Feedback</button>
+    <button type="button" id="adminBtn" onclick="showSection('admin'); return false;" style="display:none; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;">👑 Admin Panel</button>
+    <button type="button" id="copilotAdminBtn" onclick="copilotAdminLogin(); return false;" style="display:none; background: linear-gradient(135deg, #6f42c1 0%, #563d7c 100%); color: white;" title="GitHub Copilot Admin Access">🤖 Copilot Admin</button>
   </nav>
   <div id="userControls">
-    <button id="loginBtn" onclick="toggleModal(true)" style="display:none;">Login</button>
-    <button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
+    <button type="button" id="loginBtn" onclick="toggleModal(true); return false;" style="display:none;">Login</button>
+    <button type="button" id="logoutBtn" onclick="logout(); return false;" style="display:none;">Logout</button>
     <div id="notificationBell" onclick="openNotifications()" title="Messaggi Chat">
       <div class="bell-icon">🔔</div>
       <span id="notificationCount" class="notification-badge">0</span>
       <div id="notificationDropdown" class="notification-dropdown" style="display:none;">
         <div class="notification-header">
           <h3>� Messaggi Chat</h3>
-          <button onclick="markAllAsRead()" class="mark-read-btn">Segna tutti come letti</button>
+          <button type="button" onclick="markAllAsRead(); return false;" class="mark-read-btn">Segna tutti come letti</button>
         </div>
         <div id="notificationList" class="notification-list">
           <div class="no-notifications">Nessun nuovo messaggio</div>
@@ -242,7 +242,7 @@
       <p>Stadio Luigi Ferraris, Data: <strong>29 settembre 2025</strong>, Ore: <strong>20:45</strong></p>
       <div id="matchCountdownGenoaLazio" style="font-size:1.1em;font-weight:500;color:#dc3545;margin:8px 0;"></div>
       <button>Vedi dettagli</button>
-      <button onclick="apriTrattativa('Genoa vs Lazio')">Apri trattativa</button>
+      <button type="button" onclick="apriTrattativa('Genoa vs Lazio'); return false;">Apri trattativa</button>
     </div>
   </div>
 </section>
@@ -524,8 +524,8 @@
       <p>Gestione completa della piattaforma Ti Presto Genoa 1893</p>
       <div class="admin-header-actions">
         <div id="adminBadge" class="admin-badge">AMMINISTRATORE</div>
-        <button onclick="testFirebaseSystem()" class="test-system-btn" title="Testa integrità sistema Firebase">🧪 Test Sistema</button>
-        <button onclick="debugSystemInfo()" class="debug-info-btn" title="Mostra informazioni debug">🔧 Debug Info</button>
+        <button type="button" onclick="testFirebaseSystem(); return false;" class="test-system-btn" title="Testa integrità sistema Firebase">🧪 Test Sistema</button>
+        <button type="button" onclick="debugSystemInfo(); return false;" class="debug-info-btn" title="Mostra informazioni debug">🔧 Debug Info</button>
       </div>
     </div>
     
@@ -563,11 +563,11 @@
     </div>
     
     <div class="admin-tabs">
-      <button class="tab-button active" onclick="showAdminTab('feedback')">💬 Gestione Feedback</button>
-      <button class="tab-button" onclick="showAdminTab('users')">👥 Gestione Utenti</button>
-      <button class="tab-button" onclick="showAdminTab('analytics')">📊 Analytics</button>
-      <button class="tab-button" onclick="showAdminTab('content')">📝 Moderazione</button>
-      <button class="tab-button" onclick="showAdminTab('settings')">⚙️ Impostazioni</button>
+      <button type="button" class="tab-button active" onclick="showAdminTab('feedback'); return false;">💬 Gestione Feedback</button>
+      <button type="button" class="tab-button" onclick="showAdminTab('users'); return false;">👥 Gestione Utenti</button>
+      <button type="button" class="tab-button" onclick="showAdminTab('analytics'); return false;">📊 Analytics</button>
+      <button type="button" class="tab-button" onclick="showAdminTab('content'); return false;">📝 Moderazione</button>
+      <button type="button" class="tab-button" onclick="showAdminTab('settings'); return false;">⚙️ Impostazioni</button>
     </div>
     
     <div class="admin-content">

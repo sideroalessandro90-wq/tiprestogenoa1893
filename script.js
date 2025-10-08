@@ -469,12 +469,16 @@ function showSection(id) {
   console.log(`Caricamento sezione: ${id}`);
   
   try {
-    // Rimuovi active da tutte le sezioni
+    // Rimuovi active da tutte le sezioni con smooth transition
     document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+    
     const target = document.getElementById(id);
     if (target) {
-      target.classList.add('active');
-      console.log(`Sezione ${id} attivata`);
+      // Piccola pausa per permettere smooth transition
+      setTimeout(() => {
+        target.classList.add('active');
+        console.log(`Sezione ${id} attivata`);
+      }, 50);
     } else {
       console.error(`Elemento con id '${id}' non trovato`);
       return;
