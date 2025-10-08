@@ -5208,12 +5208,12 @@ document.addEventListener('DOMContentLoaded', function() {
     detectPWAMode();
     
     // Carica admin se necessario
-    if (currentUser && (currentUser.username === 'admin' || currentUser.isAdmin)) {
+    if (currentUser && (currentUser.username === 'admin' || currentUser.isAdmin || currentUser.email === 'dnagenoa@outlook.it')) {
       document.getElementById('adminBtn').style.display = 'inline-block';
     }
     
     // Richiedi permesso notifiche (solo per utenti normali, non admin)
-    if (!currentUser || currentUser.username !== 'admin') {
+    if (!currentUser || (currentUser.username !== 'admin' && currentUser.email !== 'dnagenoa@outlook.it')) {
       requestNotificationPermission();
     }
   }, 1000);
