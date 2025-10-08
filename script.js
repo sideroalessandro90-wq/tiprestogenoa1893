@@ -734,6 +734,12 @@ function updateUIAfterLogin() {
   // 🌐 Avvia listeners globali per chat real-time
   startGlobalChatListeners();
   
+  // 👑 Mostra pulsante admin se autorizzato
+  if (loggedInUser && (loggedInUser.username === 'admin' || loggedInUser.isAdmin || loggedInUser.email === 'dnagenoa@outlook.it')) {
+    document.getElementById('adminBtn').style.display = 'inline-block';
+    console.log('✅ Admin panel abilitato dopo login per:', loggedInUser.email);
+  }
+  
   showSection('home');
 }
 
@@ -749,6 +755,9 @@ function updateUIAfterLogout() {
   // 🛑 Ferma listeners globali
   stopGlobalChatListeners();
   stopChatRealTimeListener();
+  
+  // 👑 Nascondi pulsante admin dopo logout
+  document.getElementById('adminBtn').style.display = 'none';
   
   clearNotificationCount();
   clearProfileForm();
@@ -5207,8 +5216,13 @@ document.addEventListener('DOMContentLoaded', function() {
     registerServiceWorker();
     detectPWAMode();
     
-    // Admin button sempre visibile, ma controllo accesso nella funzione
-    console.log('Admin button sempre visibile in navigazione');
+    // Carica admin se necessario - Ripristinato comportamento originale
+    if (loggedInUser && (loggedInUser.username === 'admin' || loggedInUser.isAdmin || loggedInUser.email === 'dnagenoa@outlook.it')) {
+      document.getElementById('adminBtn').style.display = 'inline-block';
+      console.log('✅ Admin panel abilitato per:', loggedInUser.email);
+    } else {
+      document.getElementById('adminBtn').style.display = 'none';
+    }
     
     // Richiedi permesso notifiche (solo per utenti normali, non admin)
     if (!currentUser || (currentUser.username !== 'admin' && currentUser.email !== 'dnagenoa@outlook.it')) {
@@ -5475,19 +5489,4 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('🔴⚪ Mobile optimizations initialized for Ti Presto Genoa 1893');
 });
 
-// Funzione controllo accesso admin
-function checkAdminAccess() {
-  if (!loggedInUser) {
-    alert('Devi effettuare il login per accedere al pannello admin.');
-    toggleModal(true);
-    return;
-  }
-  
-  if (loggedInUser.username === 'admin' || loggedInUser.isAdmin || loggedInUser.email === 'dnagenoa@outlook.it') {
-    showSection('admin');
-    console.log('✅ Accesso admin concesso per:', loggedInUser.email);
-  } else {
-    alert('Non hai i permessi per accedere al pannello amministrativo.');
-    console.log('❌ Accesso admin negato per:', loggedInUser.email);
-  }
-}
+
