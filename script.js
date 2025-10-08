@@ -577,6 +577,7 @@ async function loginWithGoogle() {
     
     toggleModal(false);
     showToast('✅ Login con Google effettuato!', 'success');
+    showSection('home');
     
   } catch (error) {
     console.error('❌ Errore login Google:', error);
@@ -610,6 +611,7 @@ async function login(event) {
     await auth.signInWithEmailAndPassword(email, password);
     toggleModal(false);
     showToast('✅ Login effettuato con successo!', 'success');
+    showSection('home');
   } catch (error) {
     console.error('❌ Errore login:', error);
     
@@ -704,6 +706,8 @@ async function register(event) {
     }
     
     toggleModal(false);
+    showToast('✅ Registrazione completata! Benvenuto!', 'success');
+    showSection('home');
     
   } catch (error) {
     console.error('❌ Errore registrazione:', error);
@@ -1767,6 +1771,7 @@ async function inviaRichiestaConDatiPagamento() {
     
     closeModal('datiPagamentoModal');
     showToast('✅ Richiesta inviata con dati di pagamento!', 'success');
+    showSection('mySubscription');
     
     // Analytics
     addAnalyticsEvent('richiesta_interesse_inviata', {
@@ -1973,6 +1978,7 @@ async function confermaPagamentoEffettuatoFirebase(richiestaId) {
     
     showToast('💳 Pagamento confermato! Transazione completata 🎉', 'success');
     loadMySubscription();
+    showSection('mySubscription'); // 🔄 Salta alla sezione Le Tue Trattative
   } catch (error) {
     console.error('❌ Errore nel confermare il pagamento:', error);
     showToast('❌ Errore nel confermare il pagamento', 'error');
@@ -2000,6 +2006,7 @@ async function accettaRichiestaFirebase(richiestaId) {
     
     showToast('✅ Richiesta accettata! Contatti condivisi con l\'acquirente', 'success');
     loadMySubscription();
+    showSection('mySubscription'); // 🔄 Salta alla sezione Le Tue Trattative
   } catch (error) {
     console.error('❌ Errore nell\'accettare la richiesta:', error);
     showToast('❌ Errore nell\'accettare la richiesta', 'error');
@@ -2016,6 +2023,7 @@ async function rifiutaRichiestaFirebase(richiestaId) {
     
     showToast('✅ Richiesta rifiutata', 'success');
     loadMySubscription();
+    showSection('mySubscription'); // 🔄 Salta alla sezione Le Tue Trattative
   } catch (error) {
     console.error('❌ Errore nel rifiutare la richiesta:', error);
     showToast('❌ Errore nel rifiutare la richiesta', 'error');
@@ -2053,6 +2061,7 @@ async function completaVenditaFirebase(richiestaId, abbonamentoId) {
     // Refresh UI
     loadMySubscription();
     loadAvailableMatches();
+    showSection('mySubscription'); // 🔄 Salta alla sezione Le Tue Trattative
     
   } catch (error) {
     console.error('❌ Errore nel completare la vendita:', error);
