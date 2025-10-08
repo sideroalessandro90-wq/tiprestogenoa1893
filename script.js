@@ -727,6 +727,19 @@ function toggleModal(show = true) {
   authModal.style.display = show ? 'flex' : 'none';
 }
 
+// 🆕 Toggle SellModal - Funzione mancante ripristinata
+function toggleSellModal(show = true) {
+  const sellModal = document.getElementById('sellModal');
+  if (!sellModal) return;
+  sellModal.style.display = show ? 'flex' : 'none';
+  
+  if (show) {
+    document.body.classList.add('modal-open');
+  } else {
+    document.body.classList.remove('modal-open');
+  }
+}
+
 async function logout() {
   try {
     await auth.signOut();
