@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Installazione PWA - Ti Presto Genoa</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .test-header {
+            background: linear-gradient(135deg, #002147 0%, #c8102e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .test-content {
+            padding: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .test-section:hover {
+            border-color: #002147;
+            box-shadow: 0 4px 15px rgba(0,33,71,0.1);
+        }
+        
+        .test-section h3 {
+            color: #002147;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .test-item:last-child {
+            border-bottom: none;
+        }
+        
+        .test-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .test-result {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        
+        .test-pass {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .test-fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .test-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #002147 0%, #c8102e 100%);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .log-section {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .log-output {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .pwa-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        
+        .feature-card.supported {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .feature-card.not-supported {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        @media (max-width: 768px) {
+            .test-container {
+                margin: 10px;
+            }
+            
+            .test-content {
+                padding: 20px 15px;
+            }
+            
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🔴⚪ Test Installazione PWA</h1>
+            <p>Ti Presto - L'Abbonamento Genoa CFC 1893</p>
+        </div>
+        
+        <div class="test-content">
+            <!-- Status generale -->
+            <div class="test-section">
+                <h3>📊 Status Generale PWA</h3>
+                <div id="generalStatus">
+                    <div class="test-item">
+                        <span class="test-label">Status PWA:</span>
+                        <span id="pwaStatus" class="test-result">Verificando...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-label">Modalità di visualizzazione:</span>
+                        <span id="displayMode" class="test-result">Verificando...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-label">Punteggio compatibilità:</span>
+                        <span id="compatibilityScore" class="test-result">Calcolando...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test tecnici -->
+            <div class="test-section">
+                <h3>🔧 Test Tecnici</h3>
+                <div id="technicalTests">
+                    <!-- Verrà popolato dinamicamente -->
+                </div>
+            </div>
+            
+            <!-- Features PWA -->
+            <div class="test-section">
+                <h3>⚡ Funzionalità PWA</h3>
+                <div class="pwa-features" id="pwaFeatures">
+                    <!-- Verrà popolato dinamicamente -->
+                </div>
+            </div>
+            
+            <!-- Azioni di test -->
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="runFullTest()">
+                    🔍 Test Completo
+                </button>
+                <button class="btn btn-success" onclick="testInstallation()">
+                    📱 Test Installazione
+                </button>
+                <button class="btn btn-info" onclick="testServiceWorker()">
+                    ⚙️ Test Service Worker
+                </button>
+                <button class="btn btn-info" onclick="testNotifications()">
+                    🔔 Test Notifiche
+                </button>
+            </div>
+            
+            <!-- Link al sito -->
+            <div class="action-buttons" style="margin-top: 15px;">
+                <a href="index.html" class="btn btn-primary">
+                    🏠 Vai al Sito Principale
+                </a>
+                <button class="btn btn-success" onclick="shareTest()">
+                    📤 Condividi Test
+                </button>
+            </div>
+            
+            <!-- Log output -->
+            <div class="log-section">
+                <h3>📝 Log Output</h3>
+                <div id="logOutput" class="log-output">Premi "Test Completo" per iniziare i test...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let logOutput = document.getElementById('logOutput');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('it-IT');
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            logOutput.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            console.log(`PWA Test: ${message}`);
+        }
+        
+        async function runFullTest() {
+            log('Avvio test completo PWA per Ti Presto Genoa...', 'info');
+            logOutput.textContent = '';
+            
+            // Test base
+            const tests = await runBasicTests();
+            updateTestResults(tests);
+            
+            // Test features
+            await testPWAFeatures();
+            
+            // Test installazione
+            await testInstallationCapability();
+            
+            // Calcola punteggio finale
+            calculateFinalScore(tests);
+            
+            log('Test completo terminato! ✅', 'success');
+        }
+        
+        async function runBasicTests() {
+            log('Esecuzione test base...', 'info');
+            
+            const tests = {
+                https: location.protocol === 'https:' || location.hostname === 'localhost',
+                serviceWorker: 'serviceWorker' in navigator,
+                manifest: !!document.querySelector('link[rel="manifest"]'),
+                installPrompt: 'onbeforeinstallprompt' in window,
+                notifications: 'Notification' in window,
+                offline: 'caches' in window,
+                pushMessages: 'PushManager' in window,
+                backgroundSync: 'serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype,
+                webShare: 'share' in navigator,
+                fullscreen: 'requestFullscreen' in document.documentElement,
+                standalone: window.matchMedia('(display-mode: standalone)').matches,
+                deviceMotion: 'DeviceMotionEvent' in window,
+                geolocation: 'geolocation' in navigator,
+                camera: 'mediaDevices' in navigator,
+                storage: 'localStorage' in window && 'sessionStorage' in window
+            };
+            
+            // Log risultati
+            Object.entries(tests).forEach(([test, result]) => {
+                log(`${test}: ${result ? 'PASS' : 'FAIL'}`, result ? 'success' : 'error');
+            });
+            
+            return tests;
+        }
+        
+        function updateTestResults(tests) {
+            const technicalTests = document.getElementById('technicalTests');
+            technicalTests.innerHTML = '';
+            
+            const testDescriptions = {
+                https: 'HTTPS/Localhost',
+                serviceWorker: 'Service Worker',
+                manifest: 'Web App Manifest',
+                installPrompt: 'Install Prompt',
+                notifications: 'Notifiche Push',
+                offline: 'Cache API',
+                pushMessages: 'Push Messages',
+                backgroundSync: 'Background Sync',
+                webShare: 'Web Share API',
+                fullscreen: 'Fullscreen API',
+                standalone: 'Modalità Standalone',
+                deviceMotion: 'Device Motion',
+                geolocation: 'Geolocalizzazione',
+                camera: 'Camera API',
+                storage: 'Local Storage'
+            };
+            
+            Object.entries(tests).forEach(([test, result]) => {
+                const testItem = document.createElement('div');
+                testItem.className = 'test-item';
+                testItem.innerHTML = `
+                    <span class="test-label">${testDescriptions[test]}:</span>
+                    <span class="test-result ${result ? 'test-pass' : 'test-fail'}">
+                        ${result ? '✅ PASS' : '❌ FAIL'}
+                    </span>
+                `;
+                technicalTests.appendChild(testItem);
+            });
+        }
+        
+        async function testPWAFeatures() {
+            log('Test funzionalità PWA...', 'info');
+            
+            const features = [
+                { name: 'Installabile', test: () => !window.matchMedia('(display-mode: standalone)').matches && 'onbeforeinstallprompt' in window },
+                { name: 'Offline Ready', test: () => 'serviceWorker' in navigator && 'caches' in window },
+                { name: 'Push Notifications', test: () => 'Notification' in window && 'PushManager' in window },
+                { name: 'Background Sync', test: () => 'serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype },
+                { name: 'Native Sharing', test: () => 'share' in navigator },
+                { name: 'Fullscreen', test: () => 'requestFullscreen' in document.documentElement },
+                { name: 'App Shortcuts', test: () => 'getInstalledRelatedApps' in navigator },
+                { name: 'Badging API', test: () => 'setAppBadge' in navigator }
+            ];
+            
+            const featuresContainer = document.getElementById('pwaFeatures');
+            featuresContainer.innerHTML = '';
+            
+            features.forEach(feature => {
+                const isSupported = feature.test();
+                const featureCard = document.createElement('div');
+                featureCard.className = `feature-card ${isSupported ? 'supported' : 'not-supported'}`;
+                featureCard.innerHTML = `
+                    <div style="font-size: 1.5rem; margin-bottom: 8px;">
+                        ${isSupported ? '✅' : '❌'}
+                    </div>
+                    <div style="font-weight: 600; font-size: 0.9rem;">
+                        ${feature.name}
+                    </div>
+                `;
+                featuresContainer.appendChild(featureCard);
+                
+                log(`${feature.name}: ${isSupported ? 'Supportato' : 'Non supportato'}`, isSupported ? 'success' : 'warning');
+            });
+        }
+        
+        async function testInstallationCapability() {
+            log('Test capacità di installazione...', 'info');
+            
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                log('App già installata e in modalità standalone!', 'success');
+                document.getElementById('pwaStatus').textContent = '✅ INSTALLATA';
+                document.getElementById('pwaStatus').className = 'test-result test-pass';
+                document.getElementById('displayMode').textContent = '📱 Standalone';
+                return;
+            }
+            
+            if ('onbeforeinstallprompt' in window) {
+                log('Installazione supportata - prompt disponibile', 'success');
+                document.getElementById('pwaStatus').textContent = '📱 INSTALLABILE';
+                document.getElementById('pwaStatus').className = 'test-result test-pass';
+            } else {
+                log('Prompt di installazione non supportato su questo browser', 'warning');
+                document.getElementById('pwaStatus').textContent = '⚠️ LIMITATA';
+                document.getElementById('pwaStatus').className = 'test-result test-warning';
+            }
+            
+            document.getElementById('displayMode').textContent = '🌐 Browser';
+        }
+        
+        function calculateFinalScore(tests) {
+            const totalTests = Object.keys(tests).length;
+            const passedTests = Object.values(tests).filter(Boolean).length;
+            const score = Math.round((passedTests / totalTests) * 100);
+            
+            let scoreClass, scoreText;
+            if (score >= 90) {
+                scoreClass = 'test-pass';
+                scoreText = `🏆 ${score}% - ECCELLENTE`;
+            } else if (score >= 70) {
+                scoreClass = 'test-warning';
+                scoreText = `⭐ ${score}% - BUONO`;
+            } else {
+                scoreClass = 'test-fail';
+                scoreText = `⚠️ ${score}% - MIGLIORABILE`;
+            }
+            
+            document.getElementById('compatibilityScore').textContent = scoreText;
+            document.getElementById('compatibilityScore').className = `test-result ${scoreClass}`;
+            
+            log(`Punteggio finale: ${score}% (${passedTests}/${totalTests} test passati)`, score >= 90 ? 'success' : score >= 70 ? 'warning' : 'error');
+        }
+        
+        async function testInstallation() {
+            log('Test installazione manuale...', 'info');
+            
+            try {
+                // Simula il processo di installazione
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        log('Service Worker registrato correttamente', 'success');
+                    } else {
+                        log('Service Worker non trovato', 'error');
+                    }
+                }
+                
+                // Controlla manifest
+                const manifestLink = document.querySelector('link[rel="manifest"]');
+                if (manifestLink) {
+                    try {
+                        const response = await fetch('/manifest.json');
+                        const manifest = await response.json();
+                        log(`Manifest caricato: ${manifest.name}`, 'success');
+                        log(`Icone disponibili: ${manifest.icons?.length || 0}`, 'info');
+                    } catch (error) {
+                        log('Errore caricamento manifest: ' + error.message, 'error');
+                    }
+                } else {
+                    log('Link al manifest non trovato', 'error');
+                }
+                
+                log('Test installazione completato', 'success');
+                
+            } catch (error) {
+                log('Errore durante test installazione: ' + error.message, 'error');
+            }
+        }
+        
+        async function testServiceWorker() {
+            log('Test Service Worker...', 'info');
+            
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js');
+                    log('Service Worker registrato con successo', 'success');
+                    log(`Scope: ${registration.scope}`, 'info');
+                    
+                    // Test cache
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        log(`Cache disponibili: ${cacheNames.length}`, 'info');
+                        cacheNames.forEach(name => log(`- ${name}`, 'info'));
+                    }
+                    
+                } catch (error) {
+                    log('Errore registrazione Service Worker: ' + error.message, 'error');
+                }
+            } else {
+                log('Service Worker non supportato', 'error');
+            }
+        }
+        
+        async function testNotifications() {
+            log('Test sistema notifiche...', 'info');
+            
+            if ('Notification' in window) {
+                log(`Permesso notifiche: ${Notification.permission}`, 'info');
+                
+                if (Notification.permission !== 'granted') {
+                    const permission = await Notification.requestPermission();
+                    log(`Nuovo permesso: ${permission}`, permission === 'granted' ? 'success' : 'warning');
+                }
+                
+                if (Notification.permission === 'granted') {
+                    const notification = new Notification('🔴⚪ Ti Presto Test', {
+                        body: 'Test notifica PWA completato con successo!',
+                        icon: '/logo-ufficiale-genoa-cfc.png',
+                        badge: '/logo-ufficiale-genoa-cfc.png',
+                        tag: 'pwa-test'
+                    });
+                    
+                    log('Notifica di test inviata', 'success');
+                    
+                    setTimeout(() => {
+                        notification.close();
+                    }, 5000);
+                }
+            } else {
+                log('Notifiche non supportate', 'error');
+            }
+        }
+        
+        async function shareTest() {
+            log('Test condivisione...', 'info');
+            
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Test PWA Ti Presto Genoa',
+                        text: 'Ho testato l\'installazione PWA di Ti Presto!',
+                        url: window.location.href
+                    });
+                    log('Condivisione completata', 'success');
+                } catch (error) {
+                    log('Condivisione annullata o errore: ' + error.message, 'warning');
+                }
+            } else {
+                // Fallback
+                const url = window.location.href;
+                navigator.clipboard.writeText(url).then(() => {
+                    log('URL copiato negli appunti', 'success');
+                });
+            }
+        }
+        
+        // Avvia test automatico al caricamento
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Pagina di test caricata', 'success');
+            setTimeout(runFullTest, 1000);
+        });
+    </script>
+</body>
+</html>

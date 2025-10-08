@@ -1,0 +1,24 @@
+{
+  "name": "ti-presto-genoa",
+  "version": "1.0.0",
+  "description": "Piattaforma di scambio abbonamenti Genoa CFC",
+  "main": "index.html",
+  "scripts": {
+    "start": "echo 'Static site - open index.html'",
+    "deploy": "echo 'Deploy to Netlify'"
+  },
+  "keywords": [
+    "genoa",
+    "football",
+    "subscription",
+    "exchange",
+    "firebase"
+  ],
+  "author": "Ti Presto Team",
+  "license": "MIT",
+  "homepage": "https://tiprestogenoa1893.netlify.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sideroalessandro90-wq/tiprestogenoa1893.git"
+  }
+}
