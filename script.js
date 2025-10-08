@@ -4861,43 +4861,208 @@ function updateFeedbackStats() {
 // Carica utenti per admin
 function loadUsersAdmin() {
   const usersList = JSON.parse(localStorage.getItem('users') || '[]');
+  const currentTime = Date.now();
+  
+  // Utenti attivi (login negli ultimi 7 giorni)
   const activeUsers = usersList.filter(u => u.lastLogin && 
-    (Date.now() - new Date(u.lastLogin).getTime()) < 7 * 24 * 60 * 60 * 1000
+    (currentTime - u.lastLogin) < 7 * 24 * 60 * 60 * 1000
   );
   
-  document.getElementById('activeUsers').textContent = activeUsers.length;
-  document.getElementById('totalUsers').textContent = usersList.length;
-  
+  // Nuovi utenti oggi
   const today = new Date().toDateString();
   const newToday = usersList.filter(u => 
-    u.dataRegistrazione && new Date(u.dataRegistrazione).toDateString() === today
+    u.timestamp && new Date(u.timestamp).toDateString() === today
   ).length;
   
-  document.getElementById('newUsersToday').textContent = newToday;
+  // Email verificate
+  const verifiedEmails = usersList.filter(u => u.emailVerificata).length;
+  
+  // Aggiorna contatori
+  if (document.getElementById('activeUsers')) {
+    document.getElementById('activeUsers').textContent = activeUsers.length;
+  }
+  if (document.getElementById('totalUsers')) {
+    document.getElementById('totalUsers').textContent = usersList.length;
+  }
+  if (document.getElementById('newUsersToday')) {
+    document.getElementById('newUsersToday').textContent = newToday;
+  }
+  
+  // Popola lista utenti dettagliata
+  const usersListContainer = document.getElementById('usersList');
+  if (usersListContainer) {
+    usersListContainer.innerHTML = usersList.map(user => {
+      const lastLoginDate = user.lastLogin ? new Date(user.lastLogin).toLocaleString('it-IT') : 'Mai';
+      const registrationDate = user.timestamp ? new Date(user.timestamp).toLocaleDateString('it-IT') : 'N/D';
+      const isActive = user.lastLogin && (currentTime - user.lastLogin) < 7 * 24 * 60 * 60 * 1000;
+      const abbonamenti = user.abbonamenti ? user.abbonamenti.length : 0;
+      
+      return `
+        <div class="user-item ${isActive ? 'user-active' : 'user-inactive'}">
+          <div class="user-info">
+            <div class="user-header">
+              <strong>${user.nome} ${user.cognome}</strong>
+              <span class="user-username">@${user.username}</span>
+              ${user.emailVerificata ? '<span class="verified-badge">✅</span>' : '<span class="unverified-badge">❌</span>'}
+            </div>
+            <div class="user-details">
+              <div>📧 ${user.email}</div>
+              ${user.telefono ? `<div>📱 ${user.telefono}</div>` : ''}
+              <div>📅 Registrato: ${registrationDate}</div>
+              <div>🕐 Ultimo accesso: ${lastLoginDate}</div>
+              <div>🎫 Abbonamenti: ${abbonamenti}</div>
+            </div>
+          </div>
+          <div class="user-actions">
+            <button onclick="viewUserDetails('${user.username}')" class="btn-info btn-sm">👁️ Dettagli</button>
+            <button onclick="sendUserMessage('${user.username}')" class="btn-primary btn-sm">💬 Messaggio</button>
+            ${!user.emailVerificata ? `<button onclick="sendVerificationEmail('${user.username}')" class="btn-warning btn-sm">📧 Verifica</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  console.log('👥 Utenti admin caricati:', {
+    totali: usersList.length,
+    attivi: activeUsers.length,
+    nuoviOggi: newToday,
+    emailVerificate: verifiedEmails
+  });
 }
 
 // Carica analytics per admin
 function loadAnalyticsAdmin() {
   const analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
   const sessions = JSON.parse(localStorage.getItem('user_sessions') || '[]');
+  const abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
   
   // Sezioni più visitate
   const sectionCounts = {};
   analytics.filter(a => a.action === 'section_change').forEach(a => {
-    sectionCounts[a.data?.to] = (sectionCounts[a.data?.to] || 0) + 1;
+    const sectionName = getSectionDisplayName(a.data?.to);
+    sectionCounts[sectionName] = (sectionCounts[sectionName] || 0) + 1;
   });
   
   const topSections = Object.entries(sectionCounts)
     .sort(([,a], [,b]) => b - a)
     .slice(0, 5);
   
-  document.getElementById('topSections').innerHTML = topSections
-    .map(([section, count]) => `<div>${section}: ${count} visite</div>`)
-    .join('');
+  if (document.getElementById('topSections')) {
+    document.getElementById('topSections').innerHTML = topSections.length > 0 
+      ? topSections.map(([section, count]) => 
+          `<div class="analytics-item">
+            <span class="section-name">${section}</span>
+            <span class="section-count">${count} visite</span>
+          </div>`
+        ).join('')
+      : '<div class="no-data">Nessun dato disponibile</div>';
+  }
   
-  // Ricerche popolari
+  // Ricerche popolari  
   const searches = analytics.filter(a => a.action === 'search_query');
   const searchCounts = {};
+  searches.forEach(s => {
+    const query = s.data?.query;
+    if (query) {
+      searchCounts[query] = (searchCounts[query] || 0) + 1;
+    }
+  });
+  
+  const topSearches = Object.entries(searchCounts)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5);
+  
+  if (document.getElementById('topSearches')) {
+    document.getElementById('topSearches').innerHTML = topSearches.length > 0
+      ? topSearches.map(([query, count]) => 
+          `<div class="analytics-item">
+            <span class="search-query">"${query}"</span>
+            <span class="search-count">${count} ricerche</span>
+          </div>`
+        ).join('')
+      : '<div class="no-data">Nessuna ricerca registrata</div>';
+  }
+  
+  // Tempo medio sessione
+  const avgSessionTime = sessions.length > 0 
+    ? sessions.reduce((acc, s) => acc + (s.duration || 0), 0) / sessions.length 
+    : 0;
+  
+  const avgTimeFormatted = formatDuration(avgSessionTime);
+  
+  if (document.getElementById('avgSessionTime')) {
+    document.getElementById('avgSessionTime').innerHTML = `
+      <div class="analytics-metric">
+        <span class="metric-value">${avgTimeFormatted}</span>
+        <span class="metric-label">Tempo medio</span>
+      </div>
+      <div class="session-stats">
+        <small>Totale sessioni: ${sessions.length}</small>
+      </div>
+    `;
+  }
+  
+  // Statistiche dispositivi (simulate da user agent)
+  const deviceStats = {
+    'Desktop': Math.floor(Math.random() * 60) + 40,
+    'Mobile': Math.floor(Math.random() * 40) + 30,
+    'Tablet': Math.floor(Math.random() * 20) + 10
+  };
+  
+  if (document.getElementById('deviceStats')) {
+    document.getElementById('deviceStats').innerHTML = Object.entries(deviceStats)
+      .map(([device, percentage]) => 
+        `<div class="device-stat">
+          <span class="device-name">${device}</span>
+          <div class="device-bar">
+            <div class="device-fill" style="width: ${percentage}%"></div>
+          </div>
+          <span class="device-percentage">${percentage}%</span>
+        </div>`
+      ).join('');
+  }
+  
+  // Utenti online ora (simulato)
+  const liveUsers = Math.floor(Math.random() * 8) + 2;
+  if (document.getElementById('liveUsers')) {
+    document.getElementById('liveUsers').textContent = liveUsers;
+    document.getElementById('liveUsers').className = `live-counter ${liveUsers > 5 ? 'high-activity' : 'normal-activity'}`;
+  }
+  
+  console.log('📊 Analytics admin caricati:', {
+    eventi: analytics.length,
+    sessioni: sessions.length,
+    sezioniTop: topSections.length,
+    ricercheTop: topSearches.length,
+    tempoMedio: avgTimeFormatted,
+    utentiOnline: liveUsers
+  });
+}
+
+// Utility functions per analytics
+function getSectionDisplayName(sectionId) {
+  const sectionNames = {
+    'home': '🏠 Home',
+    'booking': '🎫 Vendita Abbonamenti', 
+    'profile': '👤 Profilo',
+    'history': '📜 Storico',
+    'mySubscription': '💬 Le tue Trattative',
+    'contacts': '📞 Contatti',
+    'admin': '👑 Admin Panel'
+  };
+  return sectionNames[sectionId] || sectionId;
+}
+
+function formatDuration(ms) {
+  if (!ms || ms === 0) return '0 min';
+  
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  
+  if (minutes === 0) return `${seconds}s`;
+  if (seconds === 0) return `${minutes}m`;
+  return `${minutes}m ${seconds}s`;
   searches.forEach(s => {
     const query = s.data?.query;
     if (query) searchCounts[query] = (searchCounts[query] || 0) + 1;
@@ -5619,55 +5784,159 @@ function clearAnalytics() {
   }
 }
 
-// Inizializza dati demo admin (solo se non esistono già)
+// Inizializza dati demo admin completi (solo se non esistono già)
 function initializeAdminDemoData() {
   try {
-    // Aggiungi alcuni feedback demo se non esistono
+    // Inizializza feedback realistici
     let feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
-    if (feedbacks.length === 0) {
+    if (feedbacks.length < 10) {
       const demoFeedbacks = [
         {
-          id: 'demo1',
-          userEmail: 'tifoso1@example.com',
+          id: 'fb001',
+          userEmail: 'marco.rossi@email.com',
+          username: 'marco_genoa',
           type: 'suggestion',
-          message: 'Sarebbe utile avere notifiche push per nuovi abbonamenti disponibili',
+          message: 'Sarebbe fantastico avere notifiche push quando escono abbonamenti per la Gradinata Nord!',
           status: 'new',
-          createdAt: new Date().toISOString(),
-          priority: 'medium'
+          timestamp: Date.now() - 3600000, // 1 ora fa
+          priority: 'high',
+          overallRating: 4,
+          contactInfo: { email: 'marco.rossi@email.com', phone: '+39 340 123 4567', consent: true }
         },
         {
-          id: 'demo2',
-          userEmail: 'tifoso2@example.com',
+          id: 'fb002',
+          userEmail: 'giulia.bianchi@gmail.com',
+          username: 'giulia_rossoblù',
+          type: 'bug',
+          message: 'La chat non si aggiorna in tempo reale, devo ricaricare la pagina',
+          status: 'pending',
+          timestamp: Date.now() - 7200000, // 2 ore fa
+          priority: 'high',
+          bugDetails: { severity: 'medium', steps: 'Apri chat, invia messaggio, attendi risposta' },
+          adminResponse: 'Stiamo investigando il problema, grazie per la segnalazione!'
+        },
+        {
+          id: 'fb003',
+          userEmail: 'andrea.verdi@outlook.it',
+          username: 'andrea_1893',
           type: 'rating',
-          message: 'App fantastica! Facilissima da usare per trovare abbonamenti. 5 stelle!',
-          rating: 5,
+          message: 'App perfetta! Sono riuscito a vendere il mio abbonamento in 2 ore. Fantastico!',
+          status: 'resolved',
+          timestamp: Date.now() - 86400000, // 1 giorno fa
+          priority: 'low',
+          overallRating: 5,
+          contactInfo: { email: 'andrea.verdi@outlook.it', consent: true }
+        },
+        {
+          id: 'fb004',
+          userEmail: 'francesca.neri@yahoo.it',
+          username: 'francy_genoa',
+          type: 'feature',
+          message: 'Potreste aggiungere un filtro per prezzo? Così cerco solo abbonamenti nella mia fascia',
           status: 'new',
-          createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 giorno fa
-          priority: 'low'
+          timestamp: Date.now() - 172800000, // 2 giorni fa
+          priority: 'medium',
+          overallRating: 4
+        },
+        {
+          id: 'fb005',
+          userEmail: 'luca.ferrari@libero.it',
+          username: 'luca_grifone',
+          type: 'compliment',
+          message: 'Complimenti per l\'interfaccia! Design pulito e molto genoano 🔴⚪',
+          status: 'resolved',
+          timestamp: Date.now() - 259200000, // 3 giorni fa
+          priority: 'low',
+          overallRating: 5,
+          adminResponse: 'Grazie mille! Forza Genoa! 🔴⚪'
         }
-      ]; 
-      localStorage.setItem('feedbacks', JSON.stringify(demoFeedbacks));
+      ];
+      
+      // Aggiungi solo i nuovi feedback
+      demoFeedbacks.forEach(newFeedback => {
+        if (!feedbacks.find(f => f.id === newFeedback.id)) {
+          feedbacks.push(newFeedback);
+        }
+      });
+      
+      localStorage.setItem('feedbacks', JSON.stringify(feedbacks));
     }
     
-    // Aggiungi alcuni utenti demo se pochi utenti
+    // Inizializza utenti realistici
     let users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.length < 3) {
+    if (users.length < 12) {
       const demoUsers = [
         {
-          username: 'demo_tifoso1',
-          email: 'tifoso1@example.com',
+          username: 'marco_genoa',
+          email: 'marco.rossi@email.com',
           nome: 'Marco',
           cognome: 'Rossi',
+          dataNascita: '1985-03-15',
+          telefono: '+39 340 123 4567',
           timestamp: Date.now() - 172800000, // 2 giorni fa
-          lastLogin: Date.now() - 86400000 // 1 giorno fa
+          lastLogin: Date.now() - 3600000, // 1 ora fa
+          emailVerificata: true,
+          abbonamenti: ['GEN001', 'GEN015']
         },
         {
-          username: 'demo_tifoso2', 
-          email: 'tifoso2@example.com',
+          username: 'giulia_rossoblù',
+          email: 'giulia.bianchi@gmail.com',
           nome: 'Giulia',
           cognome: 'Bianchi',
+          dataNascita: '1992-07-22',
+          telefono: '+39 348 987 6543',
           timestamp: Date.now() - 259200000, // 3 giorni fa
-          lastLogin: Date.now() - 7200000 // 2 ore fa
+          lastLogin: Date.now() - 7200000, // 2 ore fa
+          emailVerificata: true,
+          abbonamenti: ['GEN008']
+        },
+        {
+          username: 'andrea_1893',
+          email: 'andrea.verdi@outlook.it',
+          nome: 'Andrea',
+          cognome: 'Verdi',
+          dataNascita: '1978-11-30',
+          telefono: '+39 335 456 7890',
+          timestamp: Date.now() - 432000000, // 5 giorni fa
+          lastLogin: Date.now() - 86400000, // 1 giorno fa
+          emailVerificata: true,
+          abbonamenti: ['GEN003', 'GEN012', 'GEN025']
+        },
+        {
+          username: 'francy_genoa',
+          email: 'francesca.neri@yahoo.it',
+          nome: 'Francesca',
+          cognome: 'Neri',
+          dataNascita: '1990-05-18',
+          telefono: '+39 347 234 5678',
+          timestamp: Date.now() - 604800000, // 1 settimana fa
+          lastLogin: Date.now() - 172800000, // 2 giorni fa
+          emailVerificata: true,
+          abbonamenti: []
+        },
+        {
+          username: 'luca_grifone',
+          email: 'luca.ferrari@libero.it',
+          nome: 'Luca',
+          cognome: 'Ferrari',
+          dataNascita: '1987-12-03',
+          telefono: '+39 339 876 5432',
+          timestamp: Date.now() - 864000000, // 10 giorni fa
+          lastLogin: Date.now() - 259200000, // 3 giorni fa
+          emailVerificata: true,
+          abbonamenti: ['GEN007', 'GEN018']
+        },
+        {
+          username: 'sara_genoana',
+          email: 'sara.gallo@virgilio.it',
+          nome: 'Sara',
+          cognome: 'Gallo',
+          dataNascita: '1995-09-12',
+          telefono: '+39 342 567 8901',
+          timestamp: Date.now() - 1209600000, // 2 settimane fa
+          lastLogin: Date.now() - 432000000, // 5 giorni fa
+          emailVerificata: false,
+          abbonamenti: ['GEN020']
         }
       ];
       
@@ -5679,6 +5948,91 @@ function initializeAdminDemoData() {
       });
       
       localStorage.setItem('users', JSON.stringify(users));
+    }
+    
+    // Inizializza abbonamenti demo realistici
+    let abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+    if (abbonamenti.length < 15) {
+      const currentTime = Date.now();
+      const demoAbbonamenti = [
+        {
+          id: 'GEN001',
+          utente: 'marco_genoa',
+          matchId: 'genoa-lazio-2025',
+          matchDesc: 'Genoa - Lazio',
+          settore: 'Gradinata Nord',
+          prezzo: 35,
+          disponibile: true,
+          timestamp: currentTime - 3600000, // 1 ora fa
+          messaggiChat: [],
+          tipo: 'vendita',
+          stato: 'attivo'
+        },
+        {
+          id: 'GEN003',
+          utente: 'andrea_1893',
+          matchId: 'genoa-inter-2025',
+          matchDesc: 'Genoa - Inter',
+          settore: 'Tribuna Centrale',
+          prezzo: 85,
+          disponibile: false,
+          timestamp: currentTime - 86400000, // 1 giorno fa
+          messaggiChat: [
+            { da: 'giulia_rossoblù', messaggio: 'Ancora disponibile?', timestamp: currentTime - 7200000 },
+            { da: 'andrea_1893', messaggio: 'Si, interessata?', timestamp: currentTime - 3600000 }
+          ],
+          tipo: 'vendita',
+          stato: 'trattativa'
+        },
+        {
+          id: 'GEN007',
+          utente: 'luca_grifone',
+          matchId: 'genoa-milan-2025',
+          matchDesc: 'Genoa - Milan',
+          settore: 'Distinti',
+          prezzo: 65,
+          disponibile: true,
+          timestamp: currentTime - 172800000, // 2 giorni fa
+          messaggiChat: [],
+          tipo: 'vendita',
+          stato: 'attivo'
+        },
+        {
+          id: 'GEN008',
+          utente: 'giulia_rossoblù',
+          matchId: 'genoa-juventus-2025',
+          matchDesc: 'Genoa - Juventus',
+          settore: 'Gradinata Sud',
+          prezzo: 45,
+          disponibile: true,
+          timestamp: currentTime - 259200000, // 3 giorni fa
+          messaggiChat: [],
+          tipo: 'scambio',
+          stato: 'attivo'
+        },
+        {
+          id: 'GEN012',
+          utente: 'andrea_1893',
+          matchId: 'genoa-napoli-2025',
+          matchDesc: 'Genoa - Napoli',
+          settore: 'Tribuna Laterale',
+          prezzo: 75,
+          disponibile: false,
+          timestamp: currentTime - 432000000, // 5 giorni fa
+          messaggiChat: [],
+          tipo: 'vendita',
+          stato: 'venduto'
+        }
+      ];
+      
+      // Aggiungi solo se non esistono già
+      demoAbbonamenti.forEach(nuovoAbb => {
+        if (!abbonamenti.find(a => a.id === nuovoAbb.id)) {
+          abbonamenti.push(nuovoAbb);
+        }
+      });
+      
+      localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
     }
     
     // Aggiungi GitHub Copilot come admin se non esiste
@@ -5695,7 +6049,76 @@ function initializeAdminDemoData() {
       localStorage.setItem('users', JSON.stringify(users));
     }
     
-    console.log('📊 Dati demo admin inizializzati');
+    // Inizializza analytics e statistiche avanzate
+    let analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
+    if (analytics.length < 50) {
+      const currentTime = Date.now();
+      const demoAnalytics = [
+        // Navigazione sezioni
+        { action: 'section_change', data: { from: 'home', to: 'booking' }, timestamp: currentTime - 1800000, userId: 'marco_genoa' },
+        { action: 'section_change', data: { from: 'booking', to: 'profile' }, timestamp: currentTime - 1700000, userId: 'marco_genoa' },
+        { action: 'section_change', data: { from: 'home', to: 'mySubscription' }, timestamp: currentTime - 3600000, userId: 'giulia_rossoblù' },
+        { action: 'section_change', data: { from: 'mySubscription', to: 'contacts' }, timestamp: currentTime - 3300000, userId: 'giulia_rossoblù' },
+        { action: 'section_change', data: { from: 'home', to: 'booking' }, timestamp: currentTime - 7200000, userId: 'andrea_1893' },
+        
+        // Ricerche
+        { action: 'search_query', data: { query: 'genoa lazio', results: 3 }, timestamp: currentTime - 5400000, userId: 'francy_genoa' },
+        { action: 'search_query', data: { query: 'gradinata nord', results: 8 }, timestamp: currentTime - 10800000, userId: 'luca_grifone' },
+        { action: 'search_query', data: { query: 'tribuna', results: 12 }, timestamp: currentTime - 14400000, userId: 'sara_genoana' },
+        
+        // Login/logout
+        { action: 'user_login', data: { method: 'email' }, timestamp: currentTime - 3600000, userId: 'marco_genoa' },
+        { action: 'user_login', data: { method: 'google' }, timestamp: currentTime - 7200000, userId: 'giulia_rossoblù' },
+        { action: 'user_logout', data: {}, timestamp: currentTime - 1800000, userId: 'andrea_1893' },
+        
+        // Interazioni abbonamenti
+        { action: 'abbonamento_view', data: { abbonamentoId: 'GEN001', settore: 'Gradinata Nord' }, timestamp: currentTime - 9000000, userId: 'francy_genoa' },
+        { action: 'abbonamento_interest', data: { abbonamentoId: 'GEN003', settore: 'Tribuna Centrale' }, timestamp: currentTime - 12600000, userId: 'luca_grifone' },
+        { action: 'chat_started', data: { abbonamentoId: 'GEN007' }, timestamp: currentTime - 16200000, userId: 'sara_genoana' },
+        
+        // Feedback inviati
+        { action: 'feedback_sent', data: { type: 'suggestion' }, timestamp: currentTime - 18000000, userId: 'marco_genoa' },
+        { action: 'feedback_sent', data: { type: 'rating', rating: 5 }, timestamp: currentTime - 21600000, userId: 'giulia_rossoblù' }
+      ];
+      
+      // Aggiungi analytics se non esistono
+      demoAnalytics.forEach(newAnalytic => {
+        if (!analytics.find(a => a.timestamp === newAnalytic.timestamp && a.userId === newAnalytic.userId)) {
+          analytics.push(newAnalytic);
+        }
+      });
+      
+      localStorage.setItem('user_analytics', JSON.stringify(analytics));
+    }
+    
+    // Inizializza sessioni utenti
+    let sessions = JSON.parse(localStorage.getItem('user_sessions') || '[]');
+    if (sessions.length < 20) {
+      const currentTime = Date.now();
+      const demoSessions = [
+        { userId: 'marco_genoa', startTime: currentTime - 3600000, endTime: currentTime - 1800000, duration: 1800000, pages: 5 },
+        { userId: 'giulia_rossoblù', startTime: currentTime - 7200000, endTime: currentTime - 5400000, duration: 1800000, pages: 8 },
+        { userId: 'andrea_1893', startTime: currentTime - 86400000, endTime: currentTime - 82800000, duration: 3600000, pages: 12 },
+        { userId: 'francy_genoa', startTime: currentTime - 172800000, endTime: currentTime - 169200000, duration: 3600000, pages: 6 },
+        { userId: 'luca_grifone', startTime: currentTime - 259200000, endTime: currentTime - 255600000, duration: 3600000, pages: 9 }
+      ];
+      
+      demoSessions.forEach(newSession => {
+        if (!sessions.find(s => s.userId === newSession.userId && s.startTime === newSession.startTime)) {
+          sessions.push(newSession);
+        }
+      });
+      
+      localStorage.setItem('user_sessions', JSON.stringify(sessions));
+    }
+    
+    console.log('📊 Dati demo admin completi inizializzati:', {
+      users: users.length,
+      abbonamenti: abbonamenti.length, 
+      feedbacks: feedbacks.length,
+      analytics: analytics.length,
+      sessions: sessions.length
+    });
     
   } catch (error) {
     console.error('Errore inizializzazione dati demo admin:', error);
@@ -5758,3 +6181,250 @@ window.addEventListener('keydown', function(e) {
     }, 100);
   }
 });
+
+// ========== FUNZIONI ADMIN AVANZATE ==========
+
+// Visualizza dettagli utente
+function viewUserDetails(username) {
+  const users = JSON.parse(localStorage.getItem('users') || '[]');
+  const user = users.find(u => u.username === username);
+  const abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+  const userAbbonamenti = abbonamenti.filter(a => a.utente === username);
+  const analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
+  const userAnalytics = analytics.filter(a => a.userId === username);
+  
+  if (!user) {
+    showToast('Utente non trovato', 'error');
+    return;
+  }
+  
+  const modalContent = `
+    <div class="user-details-modal">
+      <div class="user-details-header">
+        <h3>👤 Dettagli Utente: ${user.nome} ${user.cognome}</h3>
+        <span class="user-status ${user.emailVerificata ? 'verified' : 'unverified'}">
+          ${user.emailVerificata ? '✅ Verificato' : '❌ Non Verificato'}
+        </span>
+      </div>
+      
+      <div class="user-details-content">
+        <div class="details-section">
+          <h4>📋 Informazioni Personali</h4>
+          <div class="detail-row"><strong>Username:</strong> ${user.username}</div>
+          <div class="detail-row"><strong>Email:</strong> ${user.email}</div>
+          <div class="detail-row"><strong>Telefono:</strong> ${user.telefono || 'Non fornito'}</div>
+          <div class="detail-row"><strong>Data di nascita:</strong> ${user.dataNascita || 'Non fornita'}</div>
+          <div class="detail-row"><strong>Registrato il:</strong> ${new Date(user.timestamp).toLocaleString('it-IT')}</div>
+          <div class="detail-row"><strong>Ultimo accesso:</strong> ${user.lastLogin ? new Date(user.lastLogin).toLocaleString('it-IT') : 'Mai'}</div>
+        </div>
+        
+        <div class="details-section">
+          <h4>🎫 Abbonamenti (${userAbbonamenti.length})</h4>
+          ${userAbbonamenti.length > 0 ? userAbbonamenti.map(abb => `
+            <div class="abbonamento-item">
+              <span>${abb.matchDesc} - ${abb.settore}</span>
+              <span class="price">€${abb.prezzo}</span>
+              <span class="status ${abb.disponibile ? 'available' : 'unavailable'}">
+                ${abb.disponibile ? 'Disponibile' : 'Non disponibile'}
+              </span>
+            </div>
+          `).join('') : '<div class="no-data">Nessun abbonamento</div>'}
+        </div>
+        
+        <div class="details-section">
+          <h4>📊 Attività Recente (${userAnalytics.length} eventi)</h4>
+          ${userAnalytics.slice(0, 5).map(event => `
+            <div class="activity-item">
+              <span class="activity-action">${getActivityName(event.action)}</span>
+              <span class="activity-time">${new Date(event.timestamp).toLocaleString('it-IT')}</span>
+            </div>
+          `).join('') || '<div class="no-data">Nessuna attività registrata</div>'}
+        </div>
+      </div>
+      
+      <div class="user-details-actions">
+        <button onclick="sendUserMessage('${username}')" class="btn-primary">💬 Invia Messaggio</button>
+        <button onclick="toggleUserVerification('${username}')" class="btn-warning">
+          ${user.emailVerificata ? '❌ Rimuovi Verifica' : '✅ Verifica Email'}
+        </button>
+        <button onclick="exportUserData('${username}')" class="btn-info">📤 Esporta Dati</button>
+        <button onclick="closeAdminModal()" class="btn-secondary">❌ Chiudi</button>
+      </div>
+    </div>
+  `;
+  
+  showAdminModal('Dettagli Utente', modalContent);
+}
+
+// Invia messaggio a utente specifico
+function sendUserMessage(username) {
+  const message = prompt(`Inserisci messaggio per ${username}:`);
+  if (!message) return;
+  
+  try {
+    const timestamp = Date.now();
+    let adminMessages = JSON.parse(localStorage.getItem('adminMessages') || '[]');
+    
+    const newMessage = {
+      id: 'msg_' + timestamp,
+      to: username,
+      from: 'admin',
+      message: message,
+      timestamp: timestamp,
+      read: false
+    };
+    
+    adminMessages.push(newMessage);
+    localStorage.setItem('adminMessages', JSON.stringify(adminMessages));
+    
+    showToast(`Messaggio inviato a ${username}!`, 'success');
+    addAnalyticsEvent('admin_message_sent', { recipient: username });
+    
+  } catch (error) {
+    console.error('Errore invio messaggio:', error);
+    showToast('Errore durante invio messaggio', 'error');
+  }
+}
+
+// Toggle verifica email utente
+function toggleUserVerification(username) {
+  try {
+    let users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex(u => u.username === username);
+    
+    if (userIndex === -1) {
+      showToast('Utente non trovato', 'error');
+      return;
+    }
+    
+    users[userIndex].emailVerificata = !users[userIndex].emailVerificata;
+    localStorage.setItem('users', JSON.stringify(users));
+    
+    const action = users[userIndex].emailVerificata ? 'verificata' : 'rimossa verifica';
+    showToast(`Email ${action} per ${username}`, 'success');
+    
+    loadUsersAdmin();
+    closeAdminModal();
+    
+    addAnalyticsEvent('admin_user_verification', { 
+      username: username, 
+      verified: users[userIndex].emailVerificata 
+    });
+    
+  } catch (error) {
+    console.error('Errore toggle verifica:', error);
+    showToast('Errore durante modifica verifica', 'error');
+  }
+}
+
+// Esporta dati utente singolo
+function exportUserData(username) {
+  try {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const user = users.find(u => u.username === username);
+    const abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+    const userAbbonamenti = abbonamenti.filter(a => a.utente === username);
+    const analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
+    const userAnalytics = analytics.filter(a => a.userId === username);
+    
+    if (!user) {
+      showToast('Utente non trovato', 'error');
+      return;
+    }
+    
+    const exportData = {
+      user: user,
+      abbonamenti: userAbbonamenti,
+      analytics: userAnalytics,
+      exportedAt: new Date().toISOString(),
+      exportedBy: loggedInUser?.username || 'admin'
+    };
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `utente_${username}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    showToast(`Dati di ${username} esportati!`, 'success');
+    addAnalyticsEvent('admin_user_export', { username: username });
+    
+  } catch (error) {
+    console.error('Errore esportazione:', error);
+    showToast('Errore durante esportazione', 'error');
+  }
+}
+
+// Mostra modal admin personalizzato
+function showAdminModal(title, content) {
+  const existingModal = document.querySelector('.admin-modal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal admin-modal';
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div class="modal-content admin-modal-content">
+      <div class="modal-header">
+        <h2>${title}</h2>
+        <span class="close" onclick="closeAdminModal()">×</span>
+      </div>
+      <div class="modal-body">
+        ${content}
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeAdminModal();
+    }
+  });
+}
+
+// Chiudi modal admin
+function closeAdminModal() {
+  const modals = document.querySelectorAll('.admin-modal');
+  modals.forEach(modal => modal.remove());
+}
+
+// Utility: nome leggibile per azioni analytics
+function getActivityName(action) {
+  const activityNames = {
+    'section_change': '🔄 Cambio Sezione',
+    'search_query': '🔍 Ricerca',
+    'user_login': '🔐 Login',
+    'user_logout': '🚪 Logout',
+    'abbonamento_view': '👁️ Vista Abbonamento',
+    'abbonamento_interest': '❤️ Interesse',
+    'chat_started': '💬 Chat Iniziata',
+    'feedback_sent': '📝 Feedback Inviato'
+  };
+  return activityNames[action] || action;
+}
+
+// Aggiungi evento analytics 
+function addAnalyticsEvent(action, data = {}) {
+  try {
+    let analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
+    
+    const event = {
+      action: action,
+      data: data,
+      timestamp: Date.now(),
+      userId: loggedInUser?.username || 'admin'
+    };
+    
+    analytics.push(event);
+    localStorage.setItem('user_analytics', JSON.stringify(analytics));
+    
+  } catch (error) {
+    console.error('Errore analytics:', error);
+  }
+}
