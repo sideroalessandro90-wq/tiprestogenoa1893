@@ -1982,6 +1982,7 @@ async function confermaPagamentoEffettuatoFirebase(richiestaId) {
     
     showToast('💳 Pagamento confermato! Transazione completata 🎉', 'success');
     loadMySubscription();
+    loadStorico(); // 📋 Aggiorna storico transazioni
     showSection('mySubscription'); // 🔄 Salta alla sezione Le Tue Trattative
   } catch (error) {
     console.error('❌ Errore nel confermare il pagamento:', error);
@@ -2065,6 +2066,7 @@ async function completaVenditaFirebase(richiestaId, abbonamentoId) {
     // Refresh UI
     loadMySubscription();
     loadHomeListings();
+    loadStorico(); // 📋 Aggiorna storico transazioni
     showSection('mySubscription'); // 🔄 Salta alla sezione Le Tue Trattative
     
   } catch (error) {
@@ -2438,9 +2440,22 @@ async function loadStorico() {
     let transazioniCompletate = [];
     
     // Processa vendite (sono il venditore)
-    richiesteVenditore.forEach(doc => {
+    for (const doc of richiesteVenditore.docs) {
       const richiesta = { id: doc.id, ...doc.data() };
-      const abbon = abbonamenti.find(a => a.id === richiesta.abbonamentoId);
+      
+      // Carica abbonamento da Firebase se non in memoria
+      let abbon = abbonamenti.find(a => a.id === richiesta.abbonamentoId);
+      if (!abbon) {
+        try {
+          const abbonDoc = await db.collection('abbonamenti').doc(richiesta.abbonamentoId).get();
+          if (abbonDoc.exists) {
+            abbon = { id: abbonDoc.id, ...abbonDoc.data() };
+          }
+        } catch (error) {
+          console.warn('⚠️ Errore caricamento abbonamento storico:', richiesta.abbonamentoId);
+        }
+      }
+      
       if (abbon) {
         transazioniCompletate.push({
           ...richiesta,
@@ -2450,12 +2465,24 @@ async function loadStorico() {
           prezzo: prezziSettore[abbon.settore] || 0
         });
       }
-    });
+    }
     
     // Processa acquisti (sono l'acquirente)
-    richiesteAcquirente.forEach(doc => {
+    for (const doc of richiesteAcquirente.docs) {
       const richiesta = { id: doc.id, ...doc.data() };
-      const abbon = abbonamenti.find(a => a.id === richiesta.abbonamentoId);
+      
+      // Carica abbonamento da Firebase se non in memoria
+      let abbon = abbonamenti.find(a => a.id === richiesta.abbonamentoId);
+      if (!abbon) {
+        try {
+          const abbonDoc = await db.collection('abbonamenti').doc(richiesta.abbonamentoId).get();
+          if (abbonDoc.exists) {
+            abbon = { id: abbonDoc.id, ...abbonDoc.data() };
+          }
+        } catch (error) {
+          console.warn('⚠️ Errore caricamento abbonamento storico:', richiesta.abbonamentoId);
+        }
+      }
       if (abbon) {
         transazioniCompletate.push({
           ...richiesta,
@@ -2465,7 +2492,7 @@ async function loadStorico() {
           prezzo: prezziSettore[abbon.settore] || 0
         });
       }
-    });
+    }
     
     // Ordina per data più recente
     transazioniCompletate.sort((a, b) => b.dataCompletamento - a.dataCompletamento);
