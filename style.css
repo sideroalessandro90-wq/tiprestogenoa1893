@@ -3375,6 +3375,77 @@ form {
     }
 }
 
+/* Pulsante Annulla Abbonamento nelle Trattative */
+.abbonamento-actions {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    text-align: center;
+}
+
+.btn-annulla-abbonamento {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-annulla-abbonamento:hover {
+    background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.btn-annulla-abbonamento:active {
+    transform: translateY(0);
+}
+
+/* Versione warning per abbonamenti con richieste attive */
+.btn-warning-action {
+    background: linear-gradient(135deg, #fd7e14 0%, #e55100 100%);
+    animation: subtle-pulse 2s infinite;
+}
+
+.btn-warning-action:hover {
+    background: linear-gradient(135deg, #e55100 0%, #d84315 100%);
+    box-shadow: 0 4px 12px rgba(253, 126, 20, 0.4);
+}
+
+@keyframes subtle-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+}
+
+/* Separazione visiva tra azioni richieste e azioni abbonamento */
+.row-actions + .abbonamento-actions {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid #f8f9fa;
+}
+
+/* Responsive per mobile */
+@media (max-width: 768px) {
+    .btn-annulla-abbonamento {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 15px;
+        font-size: 15px;
+    }
+    
+    .abbonamento-actions {
+        margin-top: 20px;
+        padding-top: 20px;
+    }
+}
+
 /* Admin Header Actions */
 .admin-header-actions {
     display: flex;

@@ -2436,7 +2436,7 @@ async function loadMySubscription() {
             <p class="richiesta-data">📅 ${new Date(richiesta.timestamp.toDate()).toLocaleDateString('it-IT')}</p>
           `;
           
-          // Pulsanti azione
+          // Pulsanti azione per richieste
           const actions = document.createElement('div');
           actions.className = 'row-actions';
           
@@ -2455,6 +2455,30 @@ async function loadMySubscription() {
           richiestaDiv.appendChild(actions);
           details.appendChild(richiestaDiv);
         }
+        
+        // 🗑️ Pulsante Annulla Abbonamento (sempre presente)
+        const abbonamentoActions = document.createElement('div');
+        abbonamentoActions.className = 'abbonamento-actions';
+        
+        const btnAnnulla = document.createElement('button');
+        btnAnnulla.className = 'btn-cancel btn-annulla-abbonamento';
+        btnAnnulla.innerHTML = '<span>🗑️</span> Annulla Abbonamento';
+        btnAnnulla.title = 'Rimuovi questo abbonamento dalla vendita';
+        btnAnnulla.onclick = () => {
+          if (confirm(`Sei sicuro di voler annullare l'abbonamento per "${abbon.matchDesc}"?\n\nQuesta azione non può essere annullata.`)) {
+            annullaTrattativa(abbon.id);
+          }
+        };
+        
+        // Se c'è una richiesta pending, mostra warning
+        if (richiesta && richiesta.stato === 'pending') {
+          btnAnnulla.innerHTML = '<span>⚠️</span> Annulla (con richiesta attiva)';
+          btnAnnulla.title = 'ATTENZIONE: Annullando perderai la richiesta di interesse attiva';
+          btnAnnulla.className += ' btn-warning-action';
+        }
+        
+        abbonamentoActions.appendChild(btnAnnulla);
+        details.appendChild(abbonamentoActions);
         
         // Assembla card
         div.appendChild(header);
@@ -3125,16 +3149,43 @@ async function annullaTrattativa(id) {
     return;
   }
   
-  // � Cancella SUBITO da localStorage (funziona sempre)
+  // 🗑️ Cancella abbonamento e richieste collegate
   try {
     // ✅ Cancella DIRETTAMENTE da Firebase
     await db.collection('abbonamenti').doc(id).delete();
+    console.log('✅ Abbonamento cancellato da Firebase');
+    
+    // 🗑️ Cancella anche le richieste di interesse collegate
+    try {
+      const richiesteSnapshot = await db.collection('richiestaInteresse')
+        .where('abbonamentoId', '==', id)
+        .get();
+        
+      const batch = db.batch();
+      richiesteSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      if (!richiesteSnapshot.empty) {
+        await batch.commit();
+        console.log(`✅ Cancellate ${richiesteSnapshot.size} richieste di interesse collegate`);
+      }
+    } catch (richiesteError) {
+      console.warn('⚠️ Errore cancellazione richieste interesse:', richiesteError);
+      // Non bloccare il processo principale per questo errore
+    }
     
     // Rimuovi dall'array locale
     abbonamenti = abbonamenti.filter(a => a.id !== id);
     
-    console.log('✅ Abbonamento cancellato da Firebase');
-    showToast('✅ Trattativa annullata e abbonamento cancellato', 'success');
+    showToast('✅ Abbonamento annullato con successo', 'success');
+    
+    // Analytics
+    addAnalyticsEvent('abbonamento_annullato', {
+      abbonamentoId: id,
+      matchDesc: abbon.matchDesc,
+      settore: abbon.settore
+    });
     
     // Aggiorna UI
     loadHomeListings();
