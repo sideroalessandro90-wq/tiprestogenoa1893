@@ -738,9 +738,16 @@ function updateUIAfterLogin() {
   startGlobalChatListeners();
   
   // 👑 Mostra pulsante admin se autorizzato
-  if (loggedInUser && (loggedInUser.username === 'admin' || loggedInUser.isAdmin || loggedInUser.email === 'dnagenoa@outlook.it')) {
+  const adminEmails = ['dnagenoa@outlook.it', 'copilot@github.com'];
+  const adminUsernames = ['admin', 'github-copilot', 'copilot'];
+  
+  if (loggedInUser && (
+    adminUsernames.includes(loggedInUser.username) || 
+    loggedInUser.isAdmin || 
+    adminEmails.includes(loggedInUser.email)
+  )) {
     document.getElementById('adminBtn').style.display = 'inline-block';
-    console.log('✅ Admin panel abilitato dopo login per:', loggedInUser.email);
+    console.log('✅ Admin panel abilitato dopo login per:', loggedInUser.email || loggedInUser.username);
   }
   
   showSection('home');
@@ -5674,9 +5681,80 @@ function initializeAdminDemoData() {
       localStorage.setItem('users', JSON.stringify(users));
     }
     
+    // Aggiungi GitHub Copilot come admin se non esiste
+    if (!users.find(u => u.username === 'github-copilot')) {
+      users.push({
+        username: 'github-copilot',
+        email: 'copilot@github.com',
+        nome: 'GitHub',
+        cognome: 'Copilot',
+        isAdmin: true,
+        timestamp: Date.now(),
+        lastLogin: Date.now()
+      });
+      localStorage.setItem('users', JSON.stringify(users));
+    }
+    
     console.log('📊 Dati demo admin inizializzati');
     
   } catch (error) {
     console.error('Errore inizializzazione dati demo admin:', error);
   }
 }
+
+// 🤖 Funzione speciale: Login diretto GitHub Copilot Admin
+function copilotAdminLogin() {
+  const copilotUser = {
+    username: 'github-copilot',
+    email: 'copilot@github.com', 
+    nome: 'GitHub',
+    cognome: 'Copilot',
+    isAdmin: true,
+    timestamp: Date.now(),
+    lastLogin: Date.now()
+  };
+  
+  // Salva in localStorage se non esiste
+  let users = JSON.parse(localStorage.getItem('users') || '[]');
+  if (!users.find(u => u.username === 'github-copilot')) {
+    users.push(copilotUser);
+    localStorage.setItem('users', JSON.stringify(users));
+  }
+  
+  // Imposta come utente loggato
+  loggedInUser = copilotUser;
+  localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
+  
+  // Aggiorna UI
+  updateUIAfterLogin();
+  
+  // Mostra admin panel direttamente
+  showSection('admin');
+  
+  showToast('🤖 Benvenuto GitHub Copilot! Accesso Admin attivato.', 'success');
+  console.log('🤖 GitHub Copilot logged in as admin');
+  
+  return true;
+}
+
+// 🎮 Comando console per attivare accesso Copilot Admin
+window.enableCopilotAdmin = function() {
+  document.getElementById('copilotAdminBtn').style.display = 'inline-block';
+  console.log('🤖 Pulsante Copilot Admin abilitato! Clicca per accedere.');
+  showToast('🤖 Accesso Copilot Admin abilitato!', 'info');
+};
+
+// 🔧 Easter egg: attiva automaticamente se viene digitato il comando magico
+window.addEventListener('keydown', function(e) {
+  // Ctrl + Shift + C + A = Copilot Access
+  if (e.ctrlKey && e.shiftKey && e.code === 'KeyC') {
+    setTimeout(() => {
+      document.addEventListener('keydown', function handler(e2) {
+        if (e2.code === 'KeyA') {
+          enableCopilotAdmin();
+          document.removeEventListener('keydown', handler);
+        }
+      }, { once: true });
+    }, 100);
+  }
+});
