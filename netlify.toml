@@ -1,60 +1,50 @@
 # Netlify Build Configuration - Ti Presto Genoa Mobile Optimized
 [build]
-  # Directory to publish
   publish = "."
-  
-  # Command to run before deploy (se necessario)
-  # command = "npm run build"
-  
-  # Ignore specifiche cartelle nel deploy
-  ignore = "backup_*/"
+  command = ""
 
-# Headers per sicurezza
+# Headers di sicurezza globali
 [[headers]]
   for = "/*"
   [headers.values]
-    # Sicurezza Firebase
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    
-    # Cache per asset statici
-    Cache-Control = "public, max-age=31536000"
 
-# Headers specifici per HTML (mobile optimization)
+# Headers per HTML - No cache per contenuto dinamico
 [[headers]]
   for = "/*.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
-    
-# Headers per CSS/JS (mobile assets)
+
+# Headers per CSS - Cache lunga per assets statici
 [[headers]]
   for = "/*.css"
   [headers.values]
-    Cache-Control = "public, max-age=604800"
+    Cache-Control = "public, max-age=31536000, immutable"
     Content-Type = "text/css; charset=utf-8"
-    
+
+# Headers per JavaScript - Cache lunga per assets statici
 [[headers]]
   for = "/*.js"
   [headers.values]
-    Cache-Control = "public, max-age=604800"
+    Cache-Control = "public, max-age=31536000, immutable"
     Content-Type = "application/javascript; charset=utf-8"
 
-# Cache ottimizzato per HTML
-[[headers]]  
-  for = "*.html"
-  [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-
-# Cache per JS/CSS
+# Headers per immagini
 [[headers]]
-  for = "*.js"
-  [headers.values] 
+  for = "/*.png"
+  [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
-  for = "*.css"
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.svg"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
@@ -63,12 +53,3 @@
   from = "/*"
   to = "/index.html"
   status = 200
-
-# Custom redirects (se necessario)
-# [[redirects]]
-#   from = "/old-path"
-#   to = "/new-path"
-#   status = 301
-
-# Environment variables (per variabili sensibili)
-# Configura in Netlify Dashboard → Site settings → Environment variables
