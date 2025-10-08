@@ -2091,36 +2091,30 @@ function startHomeRealTimeListener() {
   
   console.log('🏠 Avviando listener real-time per home page');
   
-  // Listener per tutti gli abbonamenti disponibili
+  // Listener per abbonamenti disponibili con aggiornamento array locale completo
   homeRealTimeUnsubscribe = db.collection('abbonamenti')
-    .where('disponibile', '==', true)
     .onSnapshot((snapshot) => {
-      console.log('🔄 Aggiornamento abbonamenti home page:', snapshot.size);
+      console.log('🔄 Aggiornamento completo abbonamenti:', snapshot.size);
       
-      let shouldRefreshHome = false;
-      
-      snapshot.docChanges().forEach((change) => {
-        const data = { id: change.doc.id, ...change.doc.data() };
-        
-        if (change.type === 'added') {
-          console.log('➕ Nuovo abbonamento:', data.id);
-          shouldRefreshHome = true;
-        }
-        
-        if (change.type === 'removed') {
-          console.log('➖ Abbonamento rimosso:', data.id);
-          shouldRefreshHome = true;
-        }
-        
-        if (change.type === 'modified') {
-          console.log('🔄 Abbonamento modificato:', data.id);
-          shouldRefreshHome = true;
-        }
+      // Ricostruisci array locale completo da Firebase
+      const newAbbonamenti = [];
+      snapshot.forEach(doc => {
+        newAbbonamenti.push({ id: doc.id, ...doc.data() });
       });
       
-      // Aggiorna home page solo se necessario
-      if (shouldRefreshHome && document.querySelector('.section.active')?.id === 'home') {
-        console.log('🔄 Aggiornando home page...');
+      // Sostituisci array locale
+      const oldCount = abbonamenti.length;
+      abbonamenti = newAbbonamenti;
+      
+      console.log('🔄 Array abbonamenti aggiornato:', {
+        old: oldCount,
+        new: abbonamenti.length,
+        disponibili: abbonamenti.filter(a => a.disponibile).length
+      });
+      
+      // Aggiorna home page se è la sezione attiva
+      if (document.querySelector('.section.active')?.id === 'home') {
+        console.log('🏠 Ricaricando home page...');
         loadHomeListings();
       }
     }, (error) => {
