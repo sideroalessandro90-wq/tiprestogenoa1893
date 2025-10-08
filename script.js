@@ -1124,10 +1124,84 @@ async function prenotaAbbonamento(event) {
   const match = upcomingMatches.find(m => m.id == matchId);
 
   if (!match) {
-    alert('Seleziona una partita valida');
+    showToast('❌ Seleziona una partita valida', 'error');
     return;
   }
 
+  if (!settore) {
+    showToast('❌ Seleziona un settore valido', 'error');
+    return;
+  }
+
+  // Salva i dati del form temporaneamente
+  window.tempBookingData = {
+    matchId: matchId,
+    settore: settore,
+    match: match
+  };
+
+  // Mostra popup del regolamento
+  showModal('regolamentoModal');
+  return;
+}
+
+// Procede dal regolamento al popup telefono
+function proceedToTelefonoModal() {
+  const acceptRegolamento = document.getElementById('acceptRegolamento');
+  
+  if (!acceptRegolamento.checked) {
+    showToast('❌ Devi accettare il regolamento per continuare', 'error');
+    return;
+  }
+  
+  // Pre-compila il telefono se presente nel profilo
+  const telefonoInput = document.getElementById('telefonoVendita');
+  if (loggedInUser.telefono) {
+    telefonoInput.value = loggedInUser.telefono;
+  }
+  
+  closeModal('regolamentoModal');
+  showModal('telefonoModal');
+}
+
+// Conferma telefono e crea abbonamento
+async function confirmaTelefonoEVendi() {
+  const telefono = document.getElementById('telefonoVendita').value.trim();
+  
+  if (!telefono) {
+    showToast('❌ Inserisci il tuo numero di telefono', 'error');
+    return;
+  }
+  
+  // Validazione telefono (formato base)
+  const phoneRegex = /^[\+]?[\d\s\-\(\)]{8,}$/;
+  if (!phoneRegex.test(telefono)) {
+    showToast('❌ Formato telefono non valido. Usa il formato: +39 123 456 7890', 'error');
+    return;
+  }
+  
+  // Aggiorna il telefono nell'utente se diverso
+  if (loggedInUser.telefono !== telefono) {
+    loggedInUser.telefono = telefono;
+    // Aggiorna anche in localStorage e Firebase
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex(u => u.uid === loggedInUser.uid);
+    if (userIndex !== -1) {
+      users[userIndex].telefono = telefono;
+      localStorage.setItem('users', JSON.stringify(users));
+    }
+  }
+  
+  closeModal('telefonoModal');
+  
+  // Ora procede con la creazione dell'abbonamento
+  await creaAbbonamentoDopoPopopup(telefono);
+}
+
+// Crea abbonamento dopo i popup (regolamento + telefono) 
+async function creaAbbonamentoDopoPopopup(telefono) {
+  const { matchId, settore, match } = window.tempBookingData;
+  
   // Controlla se l'utente ha già messo in vendita un abbonamento per questa specifica partita e settore
   const abbonamentioDuplicato = abbonamenti.find(a => 
     a.utente === loggedInUser.uid && 
@@ -1146,12 +1220,14 @@ async function prenotaAbbonamento(event) {
     showToast('❌ Le vendite per "Genoa - Juventus" non sono ancora aperte', 'error');
     return;
   }
+  
   const nuovoAbbonamento = {
     utente: loggedInUser.uid,
     utenteEmail: loggedInUser.email,
     utenteNome: loggedInUser.nome,
     utenteCognome: loggedInUser.cognome,
     utenteUsername: loggedInUser.username,
+    utenteTelefono: telefono, // 📞 Aggiunto telefono
     matchId: match.id,
     matchDesc: match.description,
     settore: settore,
@@ -1169,6 +1245,7 @@ async function prenotaAbbonamento(event) {
       utenteEmail: loggedInUser.email,
       utenteNome: loggedInUser.nome,
       utenteCognome: loggedInUser.cognome,
+      utenteTelefono: telefono, // 📞 Includi telefono
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       createdAt: new Date()
     });
@@ -1183,6 +1260,7 @@ async function prenotaAbbonamento(event) {
       utenteEmail: loggedInUser.email,
       utenteNome: loggedInUser.nome,
       utenteCognome: loggedInUser.cognome,
+      utenteTelefono: telefono,
       timestamp: Date.now()
     };
     
@@ -1196,6 +1274,17 @@ async function prenotaAbbonamento(event) {
     
     // 📧 Invio email di notifica
     EmailService.sendBookingCreatedNotification(abbonamentoConId);
+    
+    // Analytics
+    addAnalyticsEvent('abbonamento_creato', {
+      matchId: match.id,
+      settore: settore,
+      hasPhone: !!telefono
+    });
+    
+    // Reset form
+    document.getElementById('bookingForm').reset();
+    window.tempBookingData = null;
     
   } catch (error) {
     console.error('❌ Errore salvataggio abbonamento:', error);
@@ -1433,7 +1522,18 @@ function apriModalConfermaInteresse(abbonId) {
       <h3>🎫 ${abbon.matchDesc}</h3>
       <p><strong>Settore:</strong> ${abbon.settore}</p>
       <p><strong>Prezzo:</strong> €${formatPriceWithComma(prezziSettore[abbon.settore] || 0)}</p>
-      <p><strong>Pubblicato da:</strong> ${abbon.ownerName || abbon.utente || 'Utente'}</p>
+      <p><strong>Pubblicato da:</strong> ${abbon.utenteNome || abbon.ownerName || abbon.utente || 'Utente'} ${abbon.utenteCognome || ''}</p>
+      ${abbon.utenteTelefono ? `<div class="contatto-venditore">
+        <p><strong>📞 Contatti Venditore:</strong></p>
+        <div class="contatto-item">
+          <span class="contact-icon">📱</span>
+          <a href="tel:${abbon.utenteTelefono}" class="contact-link">${abbon.utenteTelefono}</a>
+        </div>
+        ${abbon.utenteEmail ? `<div class="contatto-item">
+          <span class="contact-icon">📧</span>
+          <a href="mailto:${abbon.utenteEmail}" class="contact-link">${abbon.utenteEmail}</a>
+        </div>` : ''}
+      </div>` : '<p class="no-contact">⚠️ Nessun contatto disponibile</p>'}
     </div>
   `;
   
@@ -3499,6 +3599,27 @@ function openModal(modalId) {
                 closeModal(modalId);
             }
         };
+    }
+}
+
+// Show modal helper
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'flex';
+        
+        // Close modal quando si clicca fuori
+        modal.onclick = function(event) {
+            if (event.target === modal) {
+                closeModal(modalId);
+            }
+        };
+        
+        // Reset checkbox se è il regolamento
+        if (modalId === 'regolamentoModal') {
+            const checkbox = document.getElementById('acceptRegolamento');
+            if (checkbox) checkbox.checked = false;
+        }
     }
 }
 

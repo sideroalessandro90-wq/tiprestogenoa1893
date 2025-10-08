@@ -913,6 +913,106 @@
   </div>
 </div>
 
+<!-- Regolamento Modal per Vendita Abbonamento -->
+<div class="modal" id="regolamentoModal">
+  <div class="modal-content regolamento-content">
+    <div class="modal-header">
+      <h2 class="modal-title">📋 Regolamento Vendita Abbonamenti</h2>
+      <span class="close" onclick="closeModal('regolamentoModal')">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="regolamento-text">
+        <h3>🎫 Termini e Condizioni per la Vendita di Abbonamenti</h3>
+        
+        <div class="regola-item">
+          <h4>📞 Contatto Diretto</h4>
+          <p>Gli acquirenti potranno contattarti direttamente tramite il tuo numero di telefono per finalizzare la transazione.</p>
+        </div>
+        
+        <div class="regola-item">
+          <h4>💰 Pagamento e Consegna</h4>
+          <p>Il pagamento e la consegna dell'abbonamento sono responsabilità esclusiva delle parti coinvolte. Ti Presto funge solo da piattaforma di incontro.</p>
+        </div>
+        
+        <div class="regola-item">
+          <h4>🔒 Privacy e Sicurezza</h4>
+          <p>Il tuo numero di telefono sarà visibile solo agli utenti interessati al tuo abbonamento. Mantieni sempre cautela negli incontri.</p>
+        </div>
+        
+        <div class="regola-item">
+          <h4>⚖️ Responsabilità</h4>
+          <p>Ti Presto non si assume responsabilità per disputerri, problemi di pagamento o altre questioni tra venditore e acquirente.</p>
+        </div>
+        
+        <div class="regola-item">
+          <h4>🔴⚪ Solo Tifosi Genoa</h4>
+          <p>Gli abbonamenti devono essere utilizzati esclusivamente da tifosi del Genoa CFC. È vietata la rivendita a tifosi avversari.</p>
+        </div>
+      </div>
+      
+      <div class="acceptance-section">
+        <label class="checkbox-container">
+          <input type="checkbox" id="acceptRegolamento" required>
+          <span class="checkmark"></span>
+          <span class="checkbox-text">Ho letto e accetto il regolamento per la vendita di abbonamenti</span>
+        </label>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" onclick="closeModal('regolamentoModal')">
+        ❌ Annulla
+      </button>
+      <button type="button" class="btn-primary" onclick="proceedToTelefonoModal()">
+        ✅ Accetto e Continua
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Telefono Modal per Vendita Abbonamento -->
+<div class="modal" id="telefonoModal">
+  <div class="modal-content telefono-content">
+    <div class="modal-header">
+      <h2 class="modal-title">📞 Conferma Numero di Telefono</h2>
+      <span class="close" onclick="closeModal('telefonoModal')">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="telefono-info">
+        <p><strong>📱 Perché è necessario il telefono?</strong></p>
+        <p>Gli acquirenti interessati al tuo abbonamento potranno contattarti direttamente per organizzare l'incontro e il pagamento.</p>
+        
+        <div class="form-group">
+          <label for="telefonoVendita">
+            <span class="label-icon">📞</span>
+            Il tuo numero di telefono
+          </label>
+          <input type="tel" id="telefonoVendita" placeholder="Es: +39 123 456 7890" value="" required>
+          <small class="form-help">Inserisci il numero con il prefisso (es: +39 per l'Italia)</small>
+        </div>
+        
+        <div class="privacy-notice">
+          <p><strong>🔒 Privacy:</strong></p>
+          <ul>
+            <li>Il tuo numero sarà visibile solo agli utenti interessati</li>
+            <li>Non verrà condiviso per scopi pubblicitari</li>
+            <li>Potrai rimuovere l'annuncio in qualsiasi momento</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" onclick="closeModal('telefonoModal')">
+        ❌ Annulla
+      </button>
+      <button type="button" class="btn-primary" onclick="confirmaTelefonoEVendi()">
+        ✅ Conferma e Metti in Vendita
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Privacy Policy Modal -->
 <div class="modal" id="privacyPolicyModal">
   <div class="modal-content privacy-policy-content">
