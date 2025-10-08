@@ -134,6 +134,16 @@ nav button .badge {
   transition: all 0.3s ease;
 }
 
+/* Fix per quadretto bianco: nascondere completamente badge quando display:none */
+nav button .badge[style*="display:none"],
+nav button .badge[style*="display: none"] {
+  margin-left: 0 !important;
+  padding: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
 @keyframes pulse-badge {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }

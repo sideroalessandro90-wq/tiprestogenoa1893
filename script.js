@@ -516,6 +516,9 @@ function showSection(id) {
       loadStorico();
     } else if (id === 'mySubscription') {
       loadMySubscription();
+    } else if (id === 'admin') {
+      updateAdminStats();
+      loadFeedbacksAdmin();
     }
   } catch (error) {
     console.error(`Errore nel caricamento della sezione ${id}:`, error);
@@ -5486,7 +5489,194 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize mobile modals
   initializeMobileModals();
   
+  // Initialize admin demo data
+  initializeAdminDemoData();
+  
   console.log('🔴⚪ Mobile optimizations initialized for Ti Presto Genoa 1893');
 });
 
+// ========== FUNZIONI ADMIN MANCANTI ==========
 
+// Aggiorna statistiche admin dashboard
+function updateAdminStats() {
+  try {
+    // Carica dati da localStorage
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+    const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+    
+    // Aggiorna contatori principali
+    document.getElementById('totalUsers').textContent = users.length;
+    document.getElementById('totalAbbonamenti').textContent = abbonamenti.length;
+    document.getElementById('totalFeedbacks').textContent = feedbacks.length;
+    
+    // Calcola engagement score
+    const engagementScore = Math.round((feedbacks.length * 0.3 + abbonamenti.length * 0.7) / Math.max(users.length, 1) * 100);
+    document.getElementById('engagementScore').textContent = engagementScore + '%';
+    
+    // Aggiorna statistiche utenti avanzate
+    const activeUsers = users.filter(user => {
+      const lastLogin = new Date(user.lastLogin || user.timestamp || 0);
+      const daysDiff = (Date.now() - lastLogin.getTime()) / (1000 * 60 * 60 * 24);
+      return daysDiff <= 30; // Attivi negli ultimi 30 giorni
+    }).length;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const newUsersToday = users.filter(user => {
+      const userDate = new Date(user.timestamp || 0);
+      userDate.setHours(0, 0, 0, 0);
+      return userDate.getTime() === today.getTime();
+    }).length;
+    
+    if (document.getElementById('activeUsers')) {
+      document.getElementById('activeUsers').textContent = activeUsers;
+    }
+    if (document.getElementById('newUsersToday')) {
+      document.getElementById('newUsersToday').textContent = newUsersToday;
+    }
+    
+    console.log('📊 Statistiche admin aggiornate:', {
+      users: users.length,
+      abbonamenti: abbonamenti.length,
+      feedbacks: feedbacks.length,
+      engagement: engagementScore + '%'
+    });
+    
+  } catch (error) {
+    console.error('Errore aggiornamento statistiche admin:', error);
+  }
+}
+
+// Carica impostazioni admin
+function loadAdminSettings() {
+  try {
+    const settings = JSON.parse(localStorage.getItem('adminSettings') || '{}');
+    
+    // Applica impostazioni salvate
+    if (document.getElementById('emailNotifications')) {
+      document.getElementById('emailNotifications').checked = settings.emailNotifications !== false;
+    }
+    if (document.getElementById('analyticsEnabled')) {
+      document.getElementById('analyticsEnabled').checked = settings.analyticsEnabled !== false;
+    }
+    
+  } catch (error) {
+    console.error('Errore caricamento impostazioni admin:', error);
+  }
+}
+
+// Esporta backup dati
+function exportBackup() {
+  try {
+    const backupData = {
+      timestamp: new Date().toISOString(),
+      users: JSON.parse(localStorage.getItem('users') || '[]'),
+      abbonamenti: JSON.parse(localStorage.getItem('abbonamenti') || '[]'),
+      feedbacks: JSON.parse(localStorage.getItem('feedbacks') || '[]'),
+      analytics: JSON.parse(localStorage.getItem('analytics') || '{}'),
+      settings: JSON.parse(localStorage.getItem('adminSettings') || '{}')
+    };
+    
+    const dataStr = JSON.stringify(backupData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `tiprestogenoa_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    showToast('✅ Backup esportato con successo!', 'success');
+    
+  } catch (error) {
+    console.error('Errore esportazione backup:', error);
+    showToast('❌ Errore durante esportazione backup', 'error');
+  }
+}
+
+// Pulisci dati analytics
+function clearAnalytics() {
+  if (confirm('⚠️ Sei sicuro di voler cancellare tutti i dati analytics? Questa azione non può essere annullata.')) {
+    try {
+      localStorage.removeItem('analytics');
+      localStorage.removeItem('userBehavior');
+      analyticsData = {};
+      
+      showToast('✅ Dati analytics puliti con successo!', 'success');
+      loadAnalyticsAdmin(); // Ricarica tab analytics
+      
+    } catch (error) {
+      console.error('Errore pulizia analytics:', error);
+      showToast('❌ Errore durante pulizia analytics', 'error');
+    }
+  }
+}
+
+// Inizializza dati demo admin (solo se non esistono già)
+function initializeAdminDemoData() {
+  try {
+    // Aggiungi alcuni feedback demo se non esistono
+    let feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+    if (feedbacks.length === 0) {
+      const demoFeedbacks = [
+        {
+          id: 'demo1',
+          userEmail: 'tifoso1@example.com',
+          type: 'suggestion',
+          message: 'Sarebbe utile avere notifiche push per nuovi abbonamenti disponibili',
+          status: 'new',
+          createdAt: new Date().toISOString(),
+          priority: 'medium'
+        },
+        {
+          id: 'demo2',
+          userEmail: 'tifoso2@example.com',
+          type: 'rating',
+          message: 'App fantastica! Facilissima da usare per trovare abbonamenti. 5 stelle!',
+          rating: 5,
+          status: 'new',
+          createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 giorno fa
+          priority: 'low'
+        }
+      ]; 
+      localStorage.setItem('feedbacks', JSON.stringify(demoFeedbacks));
+    }
+    
+    // Aggiungi alcuni utenti demo se pochi utenti
+    let users = JSON.parse(localStorage.getItem('users') || '[]');
+    if (users.length < 3) {
+      const demoUsers = [
+        {
+          username: 'demo_tifoso1',
+          email: 'tifoso1@example.com',
+          nome: 'Marco',
+          cognome: 'Rossi',
+          timestamp: Date.now() - 172800000, // 2 giorni fa
+          lastLogin: Date.now() - 86400000 // 1 giorno fa
+        },
+        {
+          username: 'demo_tifoso2', 
+          email: 'tifoso2@example.com',
+          nome: 'Giulia',
+          cognome: 'Bianchi',
+          timestamp: Date.now() - 259200000, // 3 giorni fa
+          lastLogin: Date.now() - 7200000 // 2 ore fa
+        }
+      ];
+      
+      // Aggiungi solo se non esistono già
+      demoUsers.forEach(demoUser => {
+        if (!users.find(u => u.email === demoUser.email)) {
+          users.push(demoUser);
+        }
+      });
+      
+      localStorage.setItem('users', JSON.stringify(users));
+    }
+    
+    console.log('📊 Dati demo admin inizializzati');
+    
+  } catch (error) {
+    console.error('Errore inizializzazione dati demo admin:', error);
+  }
+}
