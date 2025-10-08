@@ -772,6 +772,9 @@ function updateUIAfterLogin() {
   // 🌐 Avvia listeners globali per chat real-time
   startGlobalChatListeners();
   
+  // 🔄 Avvia listener real-time per abbonamenti (home page)
+  startHomeRealTimeListener();
+  
   // 👑 Mostra pulsante admin se autorizzato
   const adminEmails = ['dnagenoa@outlook.it', 'copilot@github.com'];
   const adminUsernames = ['admin', 'github-copilot', 'copilot'];
@@ -800,6 +803,7 @@ function updateUIAfterLogout() {
   // 🛑 Ferma listeners globali
   stopGlobalChatListeners();
   stopChatRealTimeListener();
+  stopHomeRealTimeListener();
   
   // 👑 Nascondi pulsante admin dopo logout
   document.getElementById('adminBtn').style.display = 'none';
@@ -2060,12 +2064,73 @@ async function completaVenditaFirebase(richiestaId, abbonamentoId) {
     
     // Refresh UI
     loadMySubscription();
-    loadAvailableMatches();
+    loadHomeListings();
     showSection('mySubscription'); // 🔄 Salta alla sezione Le Tue Trattative
     
   } catch (error) {
     console.error('❌ Errore nel completare la vendita:', error);
     showToast('❌ Errore nel completare la vendita', 'error');
+  }
+}
+
+// 🏠 Listener real-time per home page (aggiornamento abbonamenti)
+let homeRealTimeUnsubscribe = null;
+
+function startHomeRealTimeListener() {
+  if (!db) {
+    console.warn('⚠️ Firebase non disponibile per listener home');
+    return;
+  }
+  
+  // Ferma listener precedente se esiste
+  if (homeRealTimeUnsubscribe) {
+    homeRealTimeUnsubscribe();
+  }
+  
+  console.log('🏠 Avviando listener real-time per home page');
+  
+  // Listener per tutti gli abbonamenti disponibili
+  homeRealTimeUnsubscribe = db.collection('abbonamenti')
+    .where('disponibile', '==', true)
+    .onSnapshot((snapshot) => {
+      console.log('🔄 Aggiornamento abbonamenti home page:', snapshot.size);
+      
+      let shouldRefreshHome = false;
+      
+      snapshot.docChanges().forEach((change) => {
+        const data = { id: change.doc.id, ...change.doc.data() };
+        
+        if (change.type === 'added') {
+          console.log('➕ Nuovo abbonamento:', data.id);
+          shouldRefreshHome = true;
+        }
+        
+        if (change.type === 'removed') {
+          console.log('➖ Abbonamento rimosso:', data.id);
+          shouldRefreshHome = true;
+        }
+        
+        if (change.type === 'modified') {
+          console.log('🔄 Abbonamento modificato:', data.id);
+          shouldRefreshHome = true;
+        }
+      });
+      
+      // Aggiorna home page solo se necessario
+      if (shouldRefreshHome && document.querySelector('.section.active')?.id === 'home') {
+        console.log('🔄 Aggiornando home page...');
+        loadHomeListings();
+      }
+    }, (error) => {
+      console.error('❌ Errore listener home:', error);
+    });
+}
+
+function stopHomeRealTimeListener() {
+  if (homeRealTimeUnsubscribe) {
+    console.log('🛑 Fermando listener real-time home');
+    homeRealTimeUnsubscribe();
+    homeRealTimeUnsubscribe = null;
   }
 }
 
