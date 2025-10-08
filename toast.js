@@ -16,4 +16,9 @@
     }, ms);
   }
   window.toast = { show };
+  
+  // Funzione wrapper per compatibilità con il codice esistente
+  window.showToast = function(message, type = 'info') {
+    show(type, message);
+  };
 })();
