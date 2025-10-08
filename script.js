@@ -5207,9 +5207,20 @@ document.addEventListener('DOMContentLoaded', function() {
     registerServiceWorker();
     detectPWAMode();
     
-    // Carica admin se necessario
+    // Carica admin se necessario - TEST TEMPORANEO: SEMPRE VISIBILE
+    const adminBtn = document.getElementById('adminBtn');
+    adminBtn.style.display = 'inline-block';
+    adminBtn.style.backgroundColor = '#dc3545';
+    adminBtn.style.color = 'white';
+    adminBtn.style.zIndex = '200';
+    adminBtn.style.position = 'relative';
+    adminBtn.style.border = '2px solid yellow'; // TEST: border giallo per visibilità
+    console.log('🔴 Admin button FORZATO per test visibilità');
+    
     if (currentUser && (currentUser.username === 'admin' || currentUser.isAdmin || currentUser.email === 'dnagenoa@outlook.it')) {
-      document.getElementById('adminBtn').style.display = 'inline-block';
+      console.log('✅ Utente autorizzato come admin:', currentUser.email);
+    } else {
+      console.log('⚠️ Utente NON autorizzato, ma button visibile per test');
     }
     
     // Richiedi permesso notifiche (solo per utenti normali, non admin)
