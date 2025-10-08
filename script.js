@@ -14,6 +14,11 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+// Google Auth Provider
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
+
 // Initialize Analytics (opzionale)
 if (typeof firebase.analytics !== 'undefined') {
   const analytics = firebase.analytics();
@@ -32,7 +37,9 @@ const EMAIL_CONFIG = {
     NEW_MESSAGE: 'template_new_message',  // Template messaggio chat
     WELCOME: 'template_welcome',          // Template benvenuto
     BOOKING_CREATED: 'template_booking',  // Template abbonamento
-    DEAL_COMPLETED: 'template_deal'       // Template trattativa chiusa
+    DEAL_COMPLETED: 'template_deal',      // Template trattativa chiusa
+    FEEDBACK: 'template_feedback',        // Template nuovo feedback
+    FEEDBACK_RESPONSE: 'template_feedback_response' // Template risposta feedback
   }
 };
 
@@ -54,6 +61,18 @@ const EmailService = {
     }
 
     try {
+      // TEMPORANEAMENTE DISABILITATO - configura EmailJS per abilitare
+      console.log('📧 Notifica messaggio (simulata):', {
+        to_name: toUser.nome || toUser.username,
+        to_email: toUser.email,
+        from_name: fromUser.nome || fromUser.username,
+        message: message,
+        match_name: matchName
+      });
+      
+      return { status: 'success', message: 'Simulato' };
+      
+      /* CODICE EMAIL DA RIABILITARE QUANDO EMAILJS È CONFIGURATO:
       const templateParams = {
         to_name: toUser.nome || toUser.username,
         to_email: toUser.email,
@@ -72,6 +91,7 @@ const EmailService = {
 
       console.log('Email inviata:', response);
       return response;
+      */
     } catch (error) {
       console.error('Errore invio email:', error);
       throw error;
@@ -83,6 +103,16 @@ const EmailService = {
     if (!user.email) return;
 
     try {
+      // TEMPORANEAMENTE DISABILITATO - configura EmailJS per abilitare
+      console.log('📧 Email benvenuto (simulata):', {
+        to_name: user.nome || user.username,
+        to_email: user.email,
+        username: user.username
+      });
+      
+      return { status: 'success', message: 'Simulato' };
+      
+      /* CODICE EMAIL DA RIABILITARE QUANDO EMAILJS È CONFIGURATO:
       const templateParams = {
         to_name: user.nome || user.username,
         to_email: user.email,
@@ -99,6 +129,7 @@ const EmailService = {
 
       console.log('Email benvenuto inviata:', response);
       return response;
+      */
     } catch (error) {
       console.error('Errore email benvenuto:', error);
     }
@@ -107,7 +138,22 @@ const EmailService = {
   // Notifica nuovo abbonamento disponibile
   async sendBookingCreatedNotification(booking) {
     try {
-      // Invia al proprietario del sito per log
+      // TEMPORANEAMENTE DISABILITATO - configura EmailJS per abilitare
+      console.log('📧 Notifica booking (simulata):', {
+        to_email: 'dnagenoa@outlook.it',
+        user_name: booking.utente,
+        match_desc: booking.matchDesc,
+        settore: booking.settore,
+        prezzo: booking.prezzo,
+        timestamp: new Date().toLocaleString('it-IT')
+      });
+      
+      // Mostra toast invece di email per ora
+      showToast('Abbonamento pubblicato! (Notifica email temporaneamente disabilitata)', 'success');
+      
+      return { status: 'success', message: 'Simulato' };
+      
+      /* CODICE EMAIL DA RIABILITARE QUANDO EMAILJS È CONFIGURATO:
       const templateParams = {
         to_email: 'dnagenoa@outlook.it',
         user_name: booking.utente,
@@ -126,6 +172,7 @@ const EmailService = {
 
       console.log('Notifica booking inviata:', response);
       return response;
+      */
     } catch (error) {
       console.error('Errore notifica booking:', error);
     }
@@ -134,6 +181,19 @@ const EmailService = {
   // Test invio email
   async testEmail() {
     try {
+      // TEMPORANEAMENTE DISABILITATO - configura EmailJS per abilitare
+      console.log('📧 Email di test (simulata):', {
+        to_name: 'Test User',
+        to_email: 'dnagenoa@outlook.it',
+        from_name: 'Sistema Ti Presto',
+        message: 'Questo è un test delle email notifications',
+        match_name: 'Genoa - Test'
+      });
+      
+      showToast('📧 Test email simulato (EmailJS disabilitato)', 'info');
+      return { status: 'success', message: 'Simulato' };
+      
+      /* CODICE EMAIL DA RIABILITARE QUANDO EMAILJS È CONFIGURATO:
       const response = await emailjs.send(
         EMAIL_CONFIG.SERVICE_ID,
         EMAIL_CONFIG.TEMPLATES.NEW_MESSAGE,
@@ -149,6 +209,7 @@ const EmailService = {
       
       showToast('📧 Email di test inviata con successo!', 'success');
       return response;
+      */
     } catch (error) {
       showToast('❌ Errore invio email di test', 'error');
       console.error('Test email fallito:', error);
@@ -241,39 +302,99 @@ const FirebaseService = {
   }
 };
 
-// Variabili globali
-let loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-let users = JSON.parse(localStorage.getItem('users')) || [];
-let abbonamenti = JSON.parse(localStorage.getItem('abbonamenti')) || [];
+// Variabili globali - Firebase-only
+let loggedInUser = null;
+let users = [];
+let abbonamenti = [];
 
-// 🔥 Funzione per sincronizzare Firebase con localStorage
-async function syncFirebaseData() {
+// 🔥 Firebase Authentication Setup  
+// auth è già dichiarato globalmente sopra
+
+// Initialize Firebase Auth
+function initFirebaseAuth() {
+  if (!auth) {
+    console.error('❌ Firebase Auth non disponibile');
+    return;
+  }
+  
+  // Listener per cambiamenti di autenticazione
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      console.log('✅ Utente autenticato:', user.email);
+      
+      // Carica profilo utente da Firestore
+      try {
+        const userDoc = await db.collection('users').doc(user.uid).get();
+          
+        if (userDoc.exists) {
+          loggedInUser = {
+            uid: user.uid,
+            email: user.email,
+            emailVerificata: user.emailVerified,
+            ...userDoc.data()
+          };
+          console.log('👤 Profilo utente caricato:', loggedInUser);
+          updateUIAfterLogin();
+          loadAbbonamenti(); // Carica abbonamenti dopo login
+        }
+      } catch (error) {
+        console.error('❌ Errore caricamento profilo:', error);
+      }
+    } else {
+      console.log('👋 Utente disconnesso');
+      loggedInUser = null;
+      abbonamenti = [];
+      updateUIAfterLogout();
+    }
+  });
+  
+  console.log('🔐 Firebase Auth inizializzato');
+}
+
+// 🔥 Carica abbonamenti da Firebase (solo se autenticato)
+async function loadAbbonamenti() {
+  if (!db) {
+    console.error('❌ Firebase non disponibile');
+    return;
+  }
+  
   try {
-    console.log('🔄 Sincronizzazione dati Firebase...');
+    console.log('📦 Caricamento abbonamenti da Firebase...');
     
-    // Sincronizza abbonamenti
-    const abbonSnapshot = await db.collection('abbonamenti').get();
-    const firebaseAbbonamenti = [];
-    abbonSnapshot.forEach((doc) => {
-      firebaseAbbonamenti.push({
+    const snapshot = await db.collection('abbonamenti').get();
+    abbonamenti = [];
+    
+    snapshot.forEach((doc) => {
+      abbonamenti.push({
         id: doc.id,
         ...doc.data()
       });
     });
     
-    // Merge con localStorage (evita duplicati)
-    firebaseAbbonamenti.forEach(fbAbb => {
-      const exists = abbonamenti.find(localAbb => localAbb.id === fbAbb.id);
-      if (!exists) {
-        abbonamenti.push(fbAbb);
-      }
-    });
-    
-    localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
-    console.log(`✅ Sincronizzati ${firebaseAbbonamenti.length} abbonamenti da Firebase`);
+    console.log(`✅ Caricati ${abbonamenti.length} abbonamenti da Firebase`);
+    loadHomeListings(); // Aggiorna UI home
     
   } catch (error) {
-    console.error('⚠️ Errore sincronizzazione Firebase:', error);
+    console.error('❌ Errore caricamento abbonamenti:', error);
+  }
+}
+
+// 🔥 Aggiorna abbonamento su Firebase
+async function updateFirebaseAbbonamento(abbonamentoId, abbonamentoData) {
+  if (!db || !abbonamentoId) {
+    console.error('❌ Firebase o ID abbonamento non disponibile');
+    return;
+  }
+  
+  try {
+    await db.collection('abbonamenti').doc(abbonamentoId).update({
+      ...abbonamentoData,
+      lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    console.log('✅ Abbonamento aggiornato su Firebase:', abbonamentoId);
+  } catch (error) {
+    console.error('❌ Errore aggiornamento abbonamento su Firebase:', error);
   }
 }
 
@@ -401,42 +522,109 @@ function showSection(id) {
   }
 }
 
-// --- Autenticazione ---
-function login(event) {
-  event.preventDefault();
-  const username = document.getElementById('loginUsername').value.trim();
-  const password = document.getElementById('loginPassword').value;
-
-  const user = users.find(u => u.username === username && u.password === password);
-  if (!user) {
-    alert('Username o password errati');
-    return;
+// --- Firebase Authentication ---
+// Login con Google
+async function loginWithGoogle() {
+  try {
+    console.log('🔐 Tentativo login con Google...');
+    const result = await auth.signInWithPopup(googleProvider);
+    const user = result.user;
+    
+    console.log('✅ Login Google riuscito:', user.email);
+    
+    // Controlla se è il primo accesso e crea profilo
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    
+    if (!userDoc.exists) {
+      console.log('👤 Creazione profilo per nuovo utente Google...');
+      
+      // Crea profilo con i dati Google
+      await db.collection('users').doc(user.uid).set({
+        nome: user.displayName?.split(' ')[0] || 'Nome',
+        cognome: user.displayName?.split(' ').slice(1).join(' ') || 'Cognome',
+        email: user.email,
+        telefono: '',
+        dataNascita: '',
+        username: user.email.split('@')[0], // Username dal email
+        registrationDate: firebase.firestore.FieldValue.serverTimestamp(),
+        loginProvider: 'google',
+        emailVerificata: user.emailVerified
+      });
+      
+      console.log('✅ Profilo Google creato su Firestore');
+    }
+    
+    toggleModal(false);
+    showToast('✅ Login con Google effettuato!', 'success');
+    
+  } catch (error) {
+    console.error('❌ Errore login Google:', error);
+    
+    let message = 'Errore durante il login con Google';
+    if (error.code === 'auth/popup-closed-by-user') {
+      message = 'Login annullato';
+    } else if (error.code === 'auth/popup-blocked') {
+      message = 'Popup bloccato dal browser';
+    } else if (error.code === 'auth/account-exists-with-different-credential') {
+      message = 'Account già esistente con credenziali diverse';
+    }
+    
+    showToast(`❌ ${message}`, 'error');
   }
-  loggedInUser = user;
-  localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
-  toggleModal(false);
-  updateUIAfterLogin();
 }
 
-function register(event) {
+// Login con email/password
+async function login(event) {
   event.preventDefault();
+  const email = document.getElementById('loginUsername').value.trim(); // Ora usa email
+  const password = document.getElementById('loginPassword').value;
 
-  const username = document.getElementById('registerUsername').value.trim();
-  if(users.some(u => u.username === username)){
-    alert('Username già esistente');
+  if (!email || !password) {
+    showToast('❌ Inserisci email e password', 'error');
     return;
   }
 
+  try {
+    console.log('🔐 Tentativo login con email:', email);
+    await auth.signInWithEmailAndPassword(email, password);
+    toggleModal(false);
+    showToast('✅ Login effettuato con successo!', 'success');
+  } catch (error) {
+    console.error('❌ Errore login:', error);
+    
+    let message = 'Email o password errati';
+    if (error.code === 'auth/user-not-found') {
+      message = 'Utente non trovato';
+    } else if (error.code === 'auth/wrong-password') {
+      message = 'Password errata';
+    } else if (error.code === 'auth/invalid-email') {
+      message = 'Email non valida';
+    }
+    
+    showToast(`❌ ${message}`, 'error');
+  }
+}
+
+async function register(event) {
+  event.preventDefault();
+
+  const email = document.getElementById('registerEmail').value.trim();
   const password = document.getElementById('registerPassword').value;
   const confirmPassword = document.getElementById('registerConfirmPassword').value;
+  
+  if (!email || !password) {
+    showToast('❌ Inserisci email e password', 'error');
+    return;
+  }
+
   if(password !== confirmPassword){
-    alert('Le password non coincidono');
+    showToast('❌ Le password non coincidono', 'error');
     return;
   }
 
   // Controllo password: almeno un numero e un carattere speciale
   if(!/\d/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)){
-    alert('La password deve contenere almeno un numero e un carattere speciale.');
+    showToast('❌ La password deve contenere almeno un numero e un carattere speciale', 'error');
     return;
   }
 
@@ -450,50 +638,66 @@ function register(event) {
   let eta = anni;
   if (m < 0 || (m === 0 && d < 0)) eta--;
   if (eta < 18) {
-    alert('Devi avere almeno 18 anni per registrarti.');
+    showToast('❌ Devi avere almeno 18 anni per registrarti', 'error');
     return;
   }
 
   const newUser = {
-    username,
-    password,
     nome: document.getElementById('registerNome').value.trim(),
     cognome: document.getElementById('registerCognome').value.trim(),
     dataNascita: dataNascita,
-    email: document.getElementById('registerEmail').value.trim(),
     telefono: document.getElementById('registerTelefono').value.trim(),
+    username: document.getElementById('registerUsername').value.trim()
   };
 
-  // ✅ Salva SUBITO utente su localStorage
-  users.push(newUser);
-  localStorage.setItem('users', JSON.stringify(users));
-  
-  showToast('✅ Registrazione completata!', 'success');
-  
-  // 📧 Invia email di benvenuto
-  EmailService.sendWelcomeEmail(newUser).then(() => {
-    showToast('✅ Registrazione completata! Controlla la tua email.', 'success');
-  }).catch(() => {
-    console.log('⚠️ Email benvenuto fallita');
-  });
-  
-  // 🔥 Firebase opzionale in background
-  setTimeout(() => {
+  try {
+    console.log('🔐 Creazione utente Firebase:', email);
+    
+    // Crea utente su Firebase Auth
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+    const user = userCredential.user;
+    
+    console.log('✅ Utente Firebase creato:', user.uid);
+    
+    // Salva profilo utente su Firestore
+    await db.collection('users').doc(user.uid).set({
+      ...newUser,
+      email: email,
+      registrationDate: firebase.firestore.FieldValue.serverTimestamp(),
+      emailVerificata: false
+    });
+    
+    console.log('✅ Profilo utente salvato su Firestore');
+    
+    // Invia email di verifica
+    await user.sendEmailVerification();
+    
+    showToast('✅ Registrazione completata! Verifica la tua email.', 'success');
+    
+    // 📧 Invia email di benvenuto
     try {
-      db.collection('users').add({
-        ...newUser,
-        registrationDate: firebase.firestore.FieldValue.serverTimestamp()
-      }).then((docRef) => {
-        console.log('✅ Utente sincronizzato su Firebase:', docRef.id);
-      }).catch(() => {
-        console.log('⚠️ Firebase user sync fallito (ignorato)');
-      });
-    } catch (e) {
-      console.log('⚠️ Firebase non disponibile per sync utente');
+      await EmailService.sendWelcomeEmail({...newUser, email});
+      console.log('✅ Email di benvenuto inviata');
+    } catch (emailError) {
+      console.log('⚠️ Email benvenuto fallita:', emailError);
     }
-  }, 100);
-  
-  toggleModal(false);
+    
+    toggleModal(false);
+    
+  } catch (error) {
+    console.error('❌ Errore registrazione:', error);
+    
+    let message = 'Errore durante la registrazione';
+    if (error.code === 'auth/email-already-in-use') {
+      message = 'Email già registrata';
+    } else if (error.code === 'auth/weak-password') {
+      message = 'Password troppo debole';
+    } else if (error.code === 'auth/invalid-email') {
+      message = 'Email non valida';
+    }
+    
+    showToast(`❌ ${message}`, 'error');
+  }
 }
 
 function toggleModal(show = true) {
@@ -502,12 +706,15 @@ function toggleModal(show = true) {
   authModal.style.display = show ? 'flex' : 'none';
 }
 
-function logout() {
-  loggedInUser = null;
-  localStorage.removeItem('loggedInUser');
-  updateUIAfterLogout();
-  showSection('home');
-  toggleModal(true);
+async function logout() {
+  try {
+    await auth.signOut();
+    showToast('👋 Logout effettuato', 'success');
+    showSection('home');
+  } catch (error) {
+    console.error('❌ Errore logout:', error);
+    showToast('❌ Errore durante il logout', 'error');
+  }
 }
 
 function updateUIAfterLogin() {
@@ -523,6 +730,10 @@ function updateUIAfterLogin() {
   initUserReadMessages();
   updateNotificationCount();
   loadProfile();
+  
+  // 🌐 Avvia listeners globali per chat real-time
+  startGlobalChatListeners();
+  
   showSection('home');
 }
 
@@ -534,6 +745,11 @@ function updateUIAfterLogout() {
     bell.style.opacity = '0.5';
     bell.style.cursor = 'not-allowed';
   }
+  
+  // 🛑 Ferma listeners globali
+  stopGlobalChatListeners();
+  stopChatRealTimeListener();
+  
   clearNotificationCount();
   clearProfileForm();
 }
@@ -608,13 +824,13 @@ function updateProfileStats() {
   
   // Conta abbonamenti attivi
   const userSubscriptions = abbonamenti.filter(a => 
-    a.utente === loggedInUser.username && a.disponibile === true
+    a.utente === loggedInUser.uid && a.disponibile === true
   ).length;
   
   // Conta transazioni completate
   const userTransactions = abbonamenti.filter(a => {
-    const isSeller = a.utente === loggedInUser.username;
-    const isBuyer = a.buyerName === loggedInUser.username;
+    const isSeller = a.utente === loggedInUser.uid;
+    const isBuyer = a.buyerName === loggedInUser.uid;
     const isCompleted = a.confermato || a.sellerConfirmed || !a.disponibile;
     return (isSeller || isBuyer) && isCompleted;
   }).length;
@@ -643,7 +859,7 @@ function updateEmailVerificationBadge() {
   }
 }
 
-function saveProfile(event) {
+async function saveProfile(event) {
   event.preventDefault();
   if (!loggedInUser) {
     showToast('Devi effettuare il login', 'error');
@@ -657,11 +873,21 @@ function saveProfile(event) {
   loggedInUser.email = document.getElementById('profileEmail').value.trim();
   loggedInUser.telefono = document.getElementById('profileTelefono').value.trim();
 
-  // Salva nel database locale
-  const index = users.findIndex(u => u.username === loggedInUser.username);
-  if (index !== -1) {
-    users[index] = loggedInUser;
-    localStorage.setItem('users', JSON.stringify(users));
+  // Salva profilo su Firebase
+  try {
+    await db.collection('users').doc(loggedInUser.uid).update({
+      nome: loggedInUser.nome,
+      cognome: loggedInUser.cognome,
+      telefono: loggedInUser.telefono,
+      dataNascita: loggedInUser.dataNascita,
+      email: loggedInUser.email,
+      lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('✅ Profilo aggiornato su Firebase');
+  } catch (error) {
+    console.error('❌ Errore aggiornamento profilo:', error);
+    showToast('❌ Errore durante il salvataggio del profilo', 'error');
+    return;
   }
   
   // Salva preferenze
@@ -687,31 +913,42 @@ function resetProfile() {
 function loadUserPreferences() {
   if (!loggedInUser) return;
   
-  const preferences = JSON.parse(localStorage.getItem('userPreferences')) || {};
-  const userPrefs = preferences[loggedInUser.username] || {};
+  // Le preferenze ora sono salvate su Firebase nel profilo utente
+  const userPrefs = loggedInUser.preferences || {};
   
   document.getElementById('emailNotifications').checked = userPrefs.emailNotifications !== false;
   document.getElementById('pushNotifications').checked = userPrefs.pushNotifications !== false;
 }
 
-function saveUserPreferences() {
+async function saveUserPreferences() {
   if (!loggedInUser) return;
   
-  const preferences = JSON.parse(localStorage.getItem('userPreferences')) || {};
-  
-  preferences[loggedInUser.username] = {
+  const preferences = {
     emailNotifications: document.getElementById('emailNotifications').checked,
     pushNotifications: document.getElementById('pushNotifications').checked
   };
   
-  localStorage.setItem('userPreferences', JSON.stringify(preferences));
+  // Salva preferenze su Firebase nel profilo utente
+  try {
+    await db.collection('users').doc(loggedInUser.uid).update({
+      preferences: preferences,
+      preferencesUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Aggiorna anche l'oggetto locale
+    loggedInUser.preferences = preferences;
+    
+    console.log('✅ Preferenze salvate su Firebase');
+  } catch (error) {
+    console.error('❌ Errore salvataggio preferenze:', error);
+  }
 }
 
 // --- Contatore abbonamenti utente ---
 function updateBookingCounter() {
   if (!loggedInUser) return;
   
-  const abbonamentiUtente = abbonamenti.filter(a => a.utente === loggedInUser.username && a.disponibile === true);
+  const abbonamentiUtente = abbonamenti.filter(a => a.utente === loggedInUser.uid && a.disponibile === true);
   const countText = `${abbonamentiUtente.length}/4`;
   
   // Cerco se esiste già il contatore
@@ -829,19 +1066,19 @@ function formatDate(dateString){
 }
 
 // --- Vendita abbonamento ---
-function prenotaAbbonamento(event) {
+async function prenotaAbbonamento(event) {
   event.preventDefault();
-  loggedInUser = JSON.parse(localStorage.getItem('loggedInUser')); // <-- aggiungi questa riga
+  
   if (!loggedInUser) {
-    alert('Devi effettuare il login per mettere in vendita.');
+    showToast('❌ Devi effettuare il login per mettere in vendita', 'error');
     toggleModal(true);
     return;
   }
 
   // Controllo limite massimo abbonamenti per utente
-  const abbonamentiUtente = abbonamenti.filter(a => a.utente === loggedInUser.username && a.disponibile === true);
+  const abbonamentiUtente = abbonamenti.filter(a => a.utente === loggedInUser.uid && a.disponibile === true);
   if (abbonamentiUtente.length >= 4) {
-    alert('Hai raggiunto il limite massimo di 4 abbonamenti in vendita. Completa o annulla una vendita esistente per aggiungerne un altro.');
+    showToast('❌ Hai raggiunto il limite massimo di 4 abbonamenti in vendita', 'error');
     return;
   }
 
@@ -856,24 +1093,28 @@ function prenotaAbbonamento(event) {
 
   // Controlla se l'utente ha già messo in vendita un abbonamento per questa specifica partita e settore
   const abbonamentioDuplicato = abbonamenti.find(a => 
-    a.utente === loggedInUser.username && 
+    a.utente === loggedInUser.uid && 
     a.matchId == matchId && 
     a.settore === settore && 
     a.disponibile === true
   );
   
   if (abbonamentioDuplicato) {
-    alert('Hai già messo in vendita un abbonamento per questa partita nello stesso settore.');
+    showToast('❌ Hai già messo in vendita un abbonamento per questa partita nello stesso settore', 'error');
     return;
   }
 
   // Blocco vendite per Genoa - Juventus (solo in "Vendi il tuo abbonamento")
   if (/^\s*genoa\s*-\s*juventus\s*$/i.test((match.description || '').trim())) {
-    alert('Le vendite per "Genoa - Juventus" non sono ancora aperte. Puoi visualizzare la partita, ma non è possibile mettere in vendita il tuo abbonamento in questa sezione.');
+    showToast('❌ Le vendite per "Genoa - Juventus" non sono ancora aperte', 'error');
     return;
   }
   const nuovoAbbonamento = {
-    utente: loggedInUser.username,
+    utente: loggedInUser.uid,
+    utenteEmail: loggedInUser.email,
+    utenteNome: loggedInUser.nome,
+    utenteCognome: loggedInUser.cognome,
+    utenteUsername: loggedInUser.username,
     matchId: match.id,
     matchDesc: match.description,
     settore: settore,
@@ -881,41 +1122,48 @@ function prenotaAbbonamento(event) {
     messaggiChat: []
   };
 
-  // ✅ Salva SUBITO su localStorage (funziona sempre)
-  const abbonamentoConId = {
-    ...nuovoAbbonamento,
-    id: 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-    timestamp: Date.now()
-  };
-  
-  abbonamenti.push(abbonamentoConId);
-  localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
-  
-  showToast('✅ Abbonamento messo in vendita con successo!', 'success');
-  updateBookingCounter();
-  updateProfileStats();
-  showSection('home');
-  loadHomeListings();
-  
-  // 📧 Invio email di notifica
-  EmailService.sendBookingCreatedNotification(abbonamentoConId);
-  
-  // 🔥 Firebase opzionale in background
-  setTimeout(() => {
-    try {
-      db.collection('abbonamenti').add({
-        ...nuovoAbbonamento,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        createdAt: new Date()
-      }).then((docRef) => {
-        console.log('✅ Abbonamento sincronizzato su Firebase:', docRef.id);
-      }).catch(() => {
-        console.log('⚠️ Firebase sync fallito (ignorato)');
-      });
-    } catch (e) {
-      console.log('⚠️ Firebase non disponibile');
-    }
-  }, 100);
+  // ✅ Salva DIRETTAMENTE su Firebase
+  try {
+    console.log('💾 Salvataggio abbonamento su Firebase...');
+    
+    const docRef = await db.collection('abbonamenti').add({
+      ...nuovoAbbonamento,
+      utente: loggedInUser.uid, // Usa UID Firebase invece del username
+      utenteEmail: loggedInUser.email,
+      utenteNome: loggedInUser.nome,
+      utenteCognome: loggedInUser.cognome,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: new Date()
+    });
+    
+    console.log('✅ Abbonamento salvato con ID:', docRef.id);
+    
+    // Aggiorna array locale con l'ID di Firebase
+    const abbonamentoConId = {
+      ...nuovoAbbonamento,
+      id: docRef.id,
+      utente: loggedInUser.uid,
+      utenteEmail: loggedInUser.email,
+      utenteNome: loggedInUser.nome,
+      utenteCognome: loggedInUser.cognome,
+      timestamp: Date.now()
+    };
+    
+    abbonamenti.push(abbonamentoConId);
+    
+    showToast('✅ Abbonamento messo in vendita con successo!', 'success');
+    updateBookingCounter();
+    updateProfileStats();
+    showSection('home');
+    loadHomeListings();
+    
+    // 📧 Invio email di notifica
+    EmailService.sendBookingCreatedNotification(abbonamentoConId);
+    
+  } catch (error) {
+    console.error('❌ Errore salvataggio abbonamento:', error);
+    showToast('❌ Errore durante il salvataggio. Riprova.', 'error');
+  }
 }
 
 // --- Home: lista ---
@@ -924,27 +1172,12 @@ function loadHomeListings() {
   if (!container) return;
   container.innerHTML = '<div class="loading">🔄 Caricamento abbonamenti...</div>';
 
-    // 🎯 MODALITÀ SOLO localStorage (Firebase opzionale)
-  console.log('📦 Caricamento abbonamenti da localStorage...');
+  // ✅ Usa solo array in memoria (già caricato da Firebase)
+  console.log('📦 Visualizzazione abbonamenti...');
   
-  // Usa solo localStorage - più stabile e veloce
   const inVendita = abbonamenti.filter(a => a.disponibile === true);
   inVendita.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   renderHomeListings(inVendita);
-  
-  // Firebase opzionale in background (non blocca l'UI)
-  setTimeout(() => {
-    try {
-      db.collection('abbonamenti').get().then((querySnapshot) => {
-        console.log('✅ Firebase caricato in background');
-        // Sincronizza silenziosamente senza ricaricare UI
-      }).catch(() => {
-        console.log('⚠️ Firebase non disponibile - usando solo localStorage');
-      });
-    } catch (e) {
-      console.log('⚠️ Firebase disabilitato');
-    }
-  }, 1000);
 }
 
 function renderHomeListings(inVendita) {
@@ -1057,67 +1290,571 @@ function renderHomeListings(inVendita) {
     const actions = document.createElement('div');
     actions.className = 'listing-actions';
     
-    const button = document.createElement('button');
-    button.className = 'btn-primary btn-trattativa';
-    
-    const buttonIcon = document.createElement('span');
-    buttonIcon.textContent = '🤝';
-    
-    const buttonText = document.createTextNode(' APRI TRATTATIVA');
-    
-    button.appendChild(buttonIcon);
-    button.appendChild(buttonText);
-    actions.appendChild(button);
+    // Pulsante APRI TRATTATIVA (ripristinato come prima)
+    if (loggedInUser && abbon.utente !== loggedInUser.uid) {
+      // Pulsante unico "APRI TRATTATIVA"
+      const button = document.createElement('button');
+      button.className = 'btn-primary btn-trattativa';
+      
+      const buttonIcon = document.createElement('span');
+      buttonIcon.textContent = '🤝';
+      
+      const buttonText = document.createTextNode(' APRI TRATTATIVA');
+      
+      button.appendChild(buttonIcon);
+      button.appendChild(buttonText);
+      actions.appendChild(button);
+      
+      // Event listener per il pulsante
+      button.setAttribute('data-id', abbon.id);
+      button.addEventListener('click', function() {
+        const id = this.getAttribute('data-id');
+        console.log('🎯 Bottone trattativa cliccato, ID:', id);
+        apriModalConfermaInteresse(id); // Nuova funzione invece di handleAcquista
+      });
+    } else if (loggedInUser && abbon.utente === loggedInUser.uid) {
+      // Se è il proprietario, mostra solo info
+      const infoText = document.createElement('p');
+      infoText.className = 'owner-info';
+      infoText.textContent = '🏠 Il tuo abbonamento';
+      actions.appendChild(infoText);
+    } else {
+      // Se non è loggato, mostra messaggio per fare login
+      const loginText = document.createElement('p');
+      loginText.className = 'login-required';
+      loginText.textContent = '🔐 Accedi per aprire la trattativa';
+      actions.appendChild(loginText);
+    }
     
     // Assembla tutto
     div.appendChild(header);
     div.appendChild(details);
     div.appendChild(actions);
     container.appendChild(div);
-    
-    // 🎯 Assegna l'ID in modo sicuro al bottone
-    const bottone = div.querySelector('.btn-trattativa');
-    if (bottone) {
-      bottone.setAttribute('data-id', abbon.id);
-      bottone.addEventListener('click', function() {
-        const id = this.getAttribute('data-id');
-        console.log('🎯 Bottone trattativa cliccato, ID:', id);
-        handleAcquista(id);
-      });
-    }
   });
 }
 
 // --- Chat ---
-function openChatModal(abbonId) {
-  console.log('💬 openChatModal chiamata con ID:', abbonId);
-  console.log('👤 Utente loggato:', loggedInUser);
+// Variable per gestire listener real-time
+let chatUnsubscribe = null;
+let globalChatListeners = [];
+
+// 🔧 Helper per ottenere il nome visualizzato dell'utente
+function getUserDisplayName(user) {
+  if (!user) return 'Utente';
+  
+  // Se ha nome e cognome, usali
+  if (user.nome && user.cognome) {
+    return `${user.nome} ${user.cognome}`.trim();
+  }
+  
+  // Se ha solo il nome
+  if (user.nome) {
+    return user.nome;
+  }
+  
+  // Se ha displayName (da Google)
+  if (user.displayName) {
+    return user.displayName;
+  }
+  
+  // Se ha email, usa la parte prima della @
+  if (user.email) {
+    return user.email.split('@')[0];
+  }
+  
+  // Fallback
+  return user.username || 'Utente';
+}
+
+// 🆕 Apri modal conferma interesse (dal pulsante APRI TRATTATIVA)  
+function apriModalConfermaInteresse(abbonId) {
+  console.log('🤝 apriModalConfermaInteresse chiamata con ID:', abbonId);
   
   if (!loggedInUser) {
-    alert('Devi effettuare il login per aprire la chat.');
-    toggleModal(true);
+    showToast('❌ Devi effettuare il login per aprire la trattativa', 'error');
     return;
   }
-
-  currentChatAbbonamento = abbonamenti.find(a => a.id === abbonId);
-  console.log('🎫 Abbonamento per chat:', currentChatAbbonamento);
   
-  if (!currentChatAbbonamento) {
-    alert('Abbonamento non trovato');
-    console.error('❌ Abbonamento non trovato per ID:', abbonId);
+  const abbon = abbonamenti.find(a => a.id === abbonId);
+  if (!abbon) {
+    console.error('❌ Abbonamento non trovato:', abbonId);
+    showToast('❌ Abbonamento non trovato', 'error');
     return;
   }
-
-  // Apri direttamente la chat per ora (debug)
-  console.log('🚀 Aprendo modal chat...');
-  const modal = document.getElementById('chatModal');
-  if (modal) {
-    modal.classList.add('active');
-    console.log('✅ Modal chat aperto');
-    loadChatMessages();
-  } else {
-    console.error('❌ Modal chat non trovato!');
+  
+  // Controlla se non è il proprio abbonamento
+  if (abbon.utente === loggedInUser.uid) {
+    showToast('❌ Non puoi aprire una trattativa sul tuo abbonamento', 'error');
+    return;
   }
+  
+  // Popola dettagli nell'modal
+  const interesseDetails = document.getElementById('interesseDetails');
+  interesseDetails.innerHTML = `
+    <div class="interesse-dettagli">
+      <h3>🎫 ${abbon.matchDesc}</h3>
+      <p><strong>Settore:</strong> ${abbon.settore}</p>
+      <p><strong>Prezzo:</strong> €${formatPriceWithComma(prezziSettore[abbon.settore] || 0)}</p>
+      <p><strong>Pubblicato da:</strong> ${abbon.ownerName || abbon.utente || 'Utente'}</p>
+    </div>
+  `;
+  
+  // Setup pulsante
+  const btnInteressato = document.getElementById('btnSonoInteressato');
+  
+  btnInteressato.onclick = () => {
+    confermaInteresse(abbonId, 'interessato');
+  };
+  
+  // Mostra modal
+  const modal = document.getElementById('confermaInteresseModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+  }
+}
+
+// 🗑️ Funzione chat deprecata (mantenuta per compatibilità)
+function openChatModal(abbonId) {
+  console.log('⚠️ openChatModal deprecata, reindirizzando a sistema interesse');
+  showToast('⚠️ Sistema chat sostituito con messaggi prestabiliti', 'info');
+  // Non fare nulla, la funzione è deprecata
+}
+
+// 🆕 === NUOVO SISTEMA INTERESSE SEMPLIFICATO ===
+
+// Conferma interesse dell'acquirente
+async function confermaInteresse(abbonId, tipoInteresse) {
+  console.log('✅ confermaInteresse chiamata:', { abbonId, tipoInteresse });
+  
+  if (!loggedInUser) {
+    showToast('❌ Devi effettuare il login', 'error');
+    return;
+  }
+  
+  try {
+    const abbon = abbonamenti.find(a => a.id === abbonId);
+    if (!abbon) {
+      showToast('❌ Abbonamento non trovato', 'error');
+      return;
+    }
+    
+    // Controlla se esiste già una richiesta per questo abbonamento
+    const richiesteSnapshot = await db.collection('richiestaInteresse')
+      .where('abbonamentoId', '==', abbonId)
+      .get();
+    
+    if (!richiesteSnapshot.empty) {
+      showToast('❌ Hai già inviato una richiesta per questo abbonamento', 'error');
+      return;
+    }
+    
+    // Crea la richiesta di interesse solo su Firebase
+    const richiestaData = {
+      abbonamentoId: abbonId,
+      venditorId: abbon.utente,
+      buyerId: loggedInUser.uid,
+      buyerName: getUserDisplayName(loggedInUser),
+      buyerEmail: loggedInUser.email,
+      tipoInteresse: tipoInteresse,
+      timestamp: new Date(),
+      stato: 'pending' // pending, accepted, rejected, completed
+    };
+    
+    // Salva solo su Firebase collection richiestaInteresse
+    await db.collection('richiestaInteresse').add(richiestaData);
+    
+    showToast('✅ Interesse inviato al venditore!', 'success');
+    closeConfermaInteresseModal();
+    
+    // Refresh UI
+    loadHomeListings();
+    loadMySubscription();
+    
+  } catch (error) {
+    console.error('❌ Errore invio interesse:', error);
+    showToast('❌ Errore invio interesse', 'error');
+  }
+}
+
+// Chiudi modal conferma interesse
+function closeConfermaInteresseModal() {
+  const modal = document.getElementById('confermaInteresseModal');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+}
+
+// Chiudi modal gestione interesse
+function closeGestioneInteresseModal() {
+  const modal = document.getElementById('gestioneInteresseModal');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+}
+
+// Chiudi modal condivisione contatti
+function closeCondivisioneContattiModal() {
+  const modal = document.getElementById('condivisioneContattiModal');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+}
+
+// 🆕 Apri modal gestione interesse per il venditore
+function apriModalGestioneInteresse(abbonId, azione) {
+  console.log('📩 apriModalGestioneInteresse:', { abbonId, azione });
+  
+  const abbon = abbonamenti.find(a => a.id === abbonId);
+  if (!abbon || !abbon.richiestaInteresse) {
+    showToast('❌ Richiesta di interesse non trovata', 'error');
+    return;
+  }
+  
+  const richiesta = abbon.richiestaInteresse;
+  
+  if (azione === 'accetta') {
+    // Apri modal condivisione contatti
+    apriModalCondivisioneContatti(abbonId);
+  } else if (azione === 'rifiuta') {
+    // Conferma rifiuto
+    if (confirm('❓ Sei sicuro di voler rifiutare questa richiesta di interesse?')) {
+      rifiutaRichiestaInteresse(abbonId);
+    }
+  }
+}
+
+// 🆕 Apri modal condivisione contatti
+function apriModalCondivisioneContatti(abbonId) {
+  const abbon = abbonamenti.find(a => a.id === abbonId);
+  if (!abbon) return;
+  
+  // Pre-compila con i dati dell'utente se disponibili
+  const emailInput = document.getElementById('venditorEmail');
+  const telefonoInput = document.getElementById('venditoreTelefono');
+  
+  if (emailInput && loggedInUser.email) {
+    emailInput.value = loggedInUser.email;
+  }
+  
+  // Setup pulsante invio
+  const btnInvia = document.getElementById('btnInviaContatti');
+  btnInvia.onclick = () => inviaContattiAlAcquirente(abbonId);
+  
+  // Mostra modal
+  const modal = document.getElementById('condivisioneContattiModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+  }
+}
+
+// 🆕 Invia contatti all'acquirente
+async function inviaContattiAlAcquirente(abbonId) {
+  const email = document.getElementById('venditorEmail').value.trim();
+  const telefono = document.getElementById('venditoreTelefono').value.trim();
+  
+  if (!email || !telefono) {
+    showToast('❌ Inserisci email e telefono', 'error');
+    return;
+  }
+  
+  if (!email.includes('@')) {
+    showToast('❌ Inserisci un\'email valida', 'error');
+    return;
+  }
+  
+  try {
+    const abbon = abbonamenti.find(a => a.id === abbonId);
+    if (!abbon || !abbon.richiestaInteresse) {
+      showToast('❌ Richiesta non trovata', 'error');
+      return;
+    }
+    
+    // Aggiorna la richiesta con i contatti e lo stato
+    abbon.richiestaInteresse.stato = 'accepted';
+    abbon.richiestaInteresse.venditorContatti = {
+      email: email,
+      telefono: telefono,
+      dataCondivisione: new Date().toISOString()
+    };
+    
+    // Salva su Firebase
+    await updateFirebaseAbbonamento(abbonId, abbon);
+    
+    // Aggiorna array locale
+    const localIndex = abbonamenti.findIndex(a => a.id === abbonId);
+    if (localIndex !== -1) {
+      abbonamenti[localIndex] = abbon;
+    }
+    
+    showToast('✅ Contatti condivisi con successo!', 'success');
+    closeCondivisioneContattiModal();
+    
+    // Refresh UI
+    loadMySubscription();
+    
+  } catch (error) {
+    console.error('❌ Errore condivisione contatti:', error);
+    showToast('❌ Errore condivisione contatti', 'error');
+  }
+}
+
+// 🆕 Rifiuta richiesta interesse
+async function rifiutaRichiestaInteresse(abbonId) {
+  try {
+    const abbon = abbonamenti.find(a => a.id === abbonId);
+    if (!abbon || !abbon.richiestaInteresse) {
+      showToast('❌ Richiesta non trovata', 'error');
+      return;
+    }
+    
+    // Aggiorna lo stato della richiesta
+    abbon.richiestaInteresse.stato = 'rejected';
+    abbon.richiestaInteresse.dataRifiuto = new Date().toISOString();
+    
+    // Salva su Firebase
+    await updateFirebaseAbbonamento(abbonId, abbon);
+    
+    // Aggiorna array locale
+    const localIndex = abbonamenti.findIndex(a => a.id === abbonId);
+    if (localIndex !== -1) {
+      abbonamenti[localIndex] = abbon;
+    }
+    
+    showToast('✅ Richiesta rifiutata', 'success');
+    
+    // Refresh UI
+    loadMySubscription();
+    
+  } catch (error) {
+    console.error('❌ Errore rifiuto richiesta:', error);
+    showToast('❌ Errore rifiuto richiesta', 'error');
+  }
+}
+
+// 🆕 Conferma pagamento effettuato (acquirente)
+async function confermaPagamentoEffettuato(abbonamentoId) {
+  try {
+    const richiesteSnapshot = await db.collection('richiestaInteresse')
+      .where('abbonamentoId', '==', abbonamentoId)
+      .get();
+    
+    if (!richiesteSnapshot.empty) {
+      const doc = richiesteSnapshot.docs[0];
+      await doc.ref.update({
+        stato: 'completed',
+        dataCompletamento: new Date(),
+        timestamp: new Date()
+      });
+      
+      showToast('💳 Pagamento confermato! Transazione completata 🎉', 'success');
+      loadMySubscription();
+    }
+  } catch (error) {
+    console.error('❌ Errore nel confermare il pagamento:', error);
+    showToast('❌ Errore nel confermare il pagamento', 'error');
+  }
+}
+
+// 🆕 Conferma pagamento effettuato (versione Firebase)
+async function confermaPagamentoEffettuatoFirebase(richiestaId) {
+  try {
+    await db.collection('richiestaInteresse').doc(richiestaId).update({
+      stato: 'completed',
+      dataCompletamento: new Date()
+    });
+    
+    showToast('💳 Pagamento confermato! Transazione completata 🎉', 'success');
+    loadMySubscription();
+  } catch (error) {
+    console.error('❌ Errore nel confermare il pagamento:', error);
+    showToast('❌ Errore nel confermare il pagamento', 'error');
+  }
+}
+
+// 🆕 Accetta richiesta interesse (versione Firebase)
+async function accettaRichiestaFirebase(richiestaId) {
+  try {
+    const contatti = {
+      email: loggedInUser.email,
+      telefono: prompt('Inserisci il tuo numero di telefono per la vendita:') || ''
+    };
+
+    if (!contatti.telefono.trim()) {
+      showToast('❌ Il numero di telefono è richiesto per la vendita', 'error');
+      return;
+    }
+
+    await db.collection('richiestaInteresse').doc(richiestaId).update({
+      stato: 'accepted',
+      venditorContatti: contatti,
+      dataAccettazione: new Date()
+    });
+    
+    showToast('✅ Richiesta accettata! Contatti condivisi con l\'acquirente', 'success');
+    loadMySubscription();
+  } catch (error) {
+    console.error('❌ Errore nell\'accettare la richiesta:', error);
+    showToast('❌ Errore nell\'accettare la richiesta', 'error');
+  }
+}
+
+// 🆕 Rifiuta richiesta interesse (versione Firebase)
+async function rifiutaRichiestaFirebase(richiestaId) {
+  try {
+    await db.collection('richiestaInteresse').doc(richiestaId).update({
+      stato: 'rejected',
+      dataRifiuto: new Date()
+    });
+    
+    showToast('✅ Richiesta rifiutata', 'success');
+    loadMySubscription();
+  } catch (error) {
+    console.error('❌ Errore nel rifiutare la richiesta:', error);
+    showToast('❌ Errore nel rifiutare la richiesta', 'error');
+  }
+}
+
+// 🔥 Listener real-time per messaggi chat
+function startChatRealTimeListener(abbonId) {
+  // Ferma listener precedente se esiste
+  if (chatUnsubscribe) {
+    chatUnsubscribe();
+  }
+  
+  console.log('🔥 Avviando listener real-time per chat:', abbonId);
+  
+  // Crea listener Firestore real-time
+  chatUnsubscribe = db.collection('abbonamenti').doc(abbonId)
+    .onSnapshot((doc) => {
+      if (doc.exists) {
+        const data = doc.data();
+        const newMessageCount = data.messaggiChat?.length || 0;
+        const oldMessageCount = currentChatAbbonamento?.messaggiChat?.length || 0;
+        
+        console.log('🔄 Aggiornamento chat real-time:', {
+          abbonId,
+          oldCount: oldMessageCount,
+          newCount: newMessageCount,
+          hasCurrentChat: !!currentChatAbbonamento
+        });
+        
+        if (data.messaggiChat && currentChatAbbonamento) {
+          // Aggiorna messaggi locali
+          currentChatAbbonamento.messaggiChat = data.messaggiChat;
+          
+          // Aggiorna anche array principale
+          const localIndex = abbonamenti.findIndex(a => a.id === abbonId);
+          if (localIndex !== -1) {
+            abbonamenti[localIndex].messaggiChat = data.messaggiChat;
+          }
+          
+          // Ricarica la UI della chat solo se ci sono nuovi messaggi
+          if (newMessageCount !== oldMessageCount) {
+            console.log('🔄 Ricaricando UI chat per nuovi messaggi');
+            loadChatMessages();
+          }
+        }
+      }
+    }, (error) => {
+      console.error('❌ Errore listener chat:', error);
+    });
+}
+
+// 🔥 Ferma listener quando si chiude la chat
+function stopChatRealTimeListener() {
+  if (chatUnsubscribe) {
+    console.log('🛑 Fermando listener real-time chat');
+    chatUnsubscribe();
+    chatUnsubscribe = null;
+  }
+}
+
+// 🌐 Sistema listeners globali per tutti gli abbonamenti dell'utente
+function startGlobalChatListeners() {
+  if (!loggedInUser) return;
+  
+  console.log('🌐 Avviando listeners globali per utente:', loggedInUser.uid);
+  
+  // Listener per abbonamenti di cui sono proprietario
+  const ownerListener = db.collection('abbonamenti')
+    .where('utente', '==', loggedInUser.uid)
+    .onSnapshot((snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'modified') {
+          const data = change.doc.data();
+          const abbonId = change.doc.id;
+          
+          console.log('🔄 Aggiornamento abbonamento proprietario:', abbonId);
+          
+          // Aggiorna array locale
+          const localIndex = abbonamenti.findIndex(a => a.id === abbonId);
+          if (localIndex !== -1) {
+            const oldMessagesCount = abbonamenti[localIndex].messaggiChat?.length || 0;
+            const newMessagesCount = data.messaggiChat?.length || 0;
+            
+            abbonamenti[localIndex].messaggiChat = data.messaggiChat || [];
+            
+            // Se ci sono nuovi messaggi e la chat non è aperta
+            if (newMessagesCount > oldMessagesCount && (!currentChatAbbonamento || currentChatAbbonamento.id !== abbonId)) {
+              console.log('🔔 Nuovo messaggio per proprietario:', {abbonId, oldCount: oldMessagesCount, newCount: newMessagesCount});
+              showToast('💬 Nuovo messaggio ricevuto!', 'info');
+              updateNotificationCount();
+            }
+          }
+        }
+      });
+    });
+  
+  // Listener per abbonamenti di cui sono acquirente (buyerName)
+  const buyerListener = db.collection('abbonamenti')
+    .where('buyerName', '==', loggedInUser.uid)
+    .onSnapshot((snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'modified') {
+          const data = change.doc.data();
+          const abbonId = change.doc.id;
+          
+          console.log('🔄 Aggiornamento abbonamento acquirente:', abbonId);
+          
+          // Trova abbonamento in array locale (potrebbe non esserci se caricato da Firebase)
+          let localIndex = abbonamenti.findIndex(a => a.id === abbonId);
+          if (localIndex === -1) {
+            // Aggiungi abbonamento se non presente
+            abbonamenti.push({ id: abbonId, ...data });
+            localIndex = abbonamenti.length - 1;
+          }
+          
+          const oldMessagesCount = abbonamenti[localIndex].messaggiChat?.length || 0;
+          const newMessagesCount = data.messaggiChat?.length || 0;
+          
+          abbonamenti[localIndex].messaggiChat = data.messaggiChat || [];
+          
+          // Se ci sono nuovi messaggi e la chat non è aperta
+          if (newMessagesCount > oldMessagesCount && (!currentChatAbbonamento || currentChatAbbonamento.id !== abbonId)) {
+            console.log('🔔 Nuovo messaggio per acquirente:', {abbonId, oldCount: oldMessagesCount, newCount: newMessageCount});
+            showToast('💬 Nuovo messaggio ricevuto!', 'info');
+            updateNotificationCount();
+          }
+        }
+      });
+    });
+  
+  globalChatListeners = [ownerListener, buyerListener];
+}
+
+// 🛑 Ferma tutti i listeners globali
+function stopGlobalChatListeners() {
+  console.log('🛑 Fermando listeners globali');
+  globalChatListeners.forEach(unsubscribe => {
+    if (unsubscribe) unsubscribe();
+  });
+  globalChatListeners = [];
 }
 
 // 🔥 Sincronizza messaggi chat specifici da Firebase
@@ -1132,7 +1869,6 @@ async function syncChatFromFirebase(abbonId) {
         const localIndex = abbonamenti.findIndex(a => a.id === abbonId);
         if (localIndex !== -1) {
           abbonamenti[localIndex].messaggiChat = firebaseData.messaggiChat;
-          localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
         }
       }
     }
@@ -1165,12 +1901,14 @@ function loadChatMessages() {
     }
     
     const p = document.createElement('p');
-    p.textContent = `${msg.sender}: ${msg.text}`;
-    p.className = msg.sender === loggedInUser.username ? 'sent' : 'received';
+    // Usa senderName se disponibile, altrimenti fallback su sender
+    const displayName = msg.senderName || msg.sender || 'Utente';
+    p.textContent = `${displayName}: ${msg.text}`;
+    p.className = msg.sender === loggedInUser.uid ? 'sent' : 'received';
     chatBox.appendChild(p);
     
     // Segna i messaggi ricevuti come letti quando la chat viene aperta
-    if (msg.sender !== loggedInUser.username) {
+    if (msg.sender !== loggedInUser.uid) {
       markMessageAsRead(currentChatAbbonamento.id, index);
     }
   });
@@ -1181,7 +1919,7 @@ function loadChatMessages() {
 
   if (
     loggedInUser &&
-    currentChatAbbonamento.utente === loggedInUser.username &&
+    currentChatAbbonamento.utente === loggedInUser.uid &&
     currentChatAbbonamento.inTrattativa === true &&
     currentChatAbbonamento.buyerName
   ) {
@@ -1239,8 +1977,11 @@ function closeDatiVenditaModal() {
 }
 
 function closeChatModal() {
+  // 🛑 Ferma listener real-time quando si chiude la chat
+  stopChatRealTimeListener();
+  
   const modal = document.getElementById('chatModal');
-  if (modal) modal.classList.remove('active');
+  if (modal) modal.style.display = 'none';
   currentChatAbbonamento = null;
   const chatActions = document.getElementById('chatActions');
   if (chatActions) chatActions.innerHTML = '';
@@ -1265,7 +2006,7 @@ function loadStorico() {
     return;
   }
 
-  const meName = loggedInUser.username;
+  const meName = loggedInUser.uid;
 
   // Partecipazioni dove sono venditore o acquirente
   const mine = (abbonamenti || []).filter(a => {
@@ -1430,7 +2171,7 @@ function loadStoricoList() {
   // Filtra abbonamenti venduti o acquistati andati a buon fine
   const storico = abbonamenti.filter(a =>
     a.stato === 'venduto' &&
-    (a.utente === loggedInUser.username || a.buyerName === loggedInUser.username)
+    (a.utente === loggedInUser.uid || a.buyerName === loggedInUser.uid)
   );
 
   if (storico.length === 0) {
@@ -1441,7 +2182,7 @@ function loadStoricoList() {
   storico.forEach(abbon => {
     // Data e ora della vendita/acquisto (usa la proprietà abbon.dataVendita se presente, altrimenti mostra "Data non disponibile")
     const dataVendita = abbon.dataVendita ? abbon.dataVendita : 'Data non disponibile';
-    const tipo = abbon.utente === loggedInUser.username ? 'Vendita' : 'Acquisto';
+    const tipo = abbon.utente === loggedInUser.uid ? 'Vendita' : 'Acquisto';
     const controparte = tipo === 'Vendita' ? abbon.buyerName : abbon.utente;
     container.innerHTML += `
       <div class="storico-item">
@@ -1453,8 +2194,8 @@ function loadStoricoList() {
   });
 }
 
-// --- Il tuo abbonamento ---
-function loadMySubscription() {
+// 🆕 --- I TUOI ABBONAMENTI E RICHIESTE DI INTERESSE ---
+async function loadMySubscription() {
   const container = document.getElementById('mySubscriptionContent');
   if (!container) return;
 
@@ -1463,100 +2204,371 @@ function loadMySubscription() {
     return;
   }
 
-  // Trattative dove sei venditore
-  const mieVendite = abbonamenti.filter(a => a.utente === loggedInUser.username && a.disponibile === true);
+  try {
+    // I tuoi abbonamenti in vendita
+    const mieVendite = abbonamenti.filter(a => a.utente === loggedInUser.uid && a.disponibile === true);
 
-  // Trattative dove sei acquirente
-  const mieAcquisti = abbonamenti.filter(a => a.buyerName === loggedInUser.username && a.inTrattativa === true && a.disponibile === true);
-
-  container.innerHTML = '';
-
-  // Sezioni venditore
-  mieVendite.forEach(abbon => {
-    const prezzo = prezziSettore[abbon.settore] || 'N/A';
+    // Carica richieste di interesse da Firebase per i tuoi abbonamenti (come venditore)
+    const richiesteVenditore = await db.collection('richiestaInteresse')
+      .where('venditorId', '==', loggedInUser.uid)
+      .get();
     
-    // Determina lo stato e il badge
-    const haMessaggi = abbon.messaggiChat && abbon.messaggiChat.length > 0;
-    const inTrattativa = abbon.inTrattativa === true || haMessaggi;
-    const badgeClass = inTrattativa ? 'badge-trattativa' : 'badge-vendita';
-    const badgeText = inTrattativa ? 'IN TRATTATIVA' : 'IN VENDITA';
-    
-    container.innerHTML += `
-      <div class="abbo-card">
-        <div class="card-header">
-          <h3>${abbon.matchDesc}</h3>
-          <span class="badge ${badgeClass}">${badgeText}</span>
-        </div>
-        <p>Settore: ${abbon.settore} - Prezzo: € ${formatPriceWithComma(prezzo)}</p>
-        <p class="role-indicator"><strong>Ruolo:</strong> Venditore</p>
-        <div class="row-actions">
-          <button class="btn-open-chat" onclick="openChatModal('${abbon.id}')">Chat</button>
-          <button class="btn-cancel-sale" onclick="annullaTrattativa('${abbon.id}')">Annulla/Cancella</button>
-        </div>
-      </div>
-    `;
-  });
+    // Carica le tue richieste inviate (come acquirente)
+    const richiesteAcquirente = await db.collection('richiestaInteresse')
+      .where('buyerId', '==', loggedInUser.uid)
+      .get();
 
-  // Sezioni acquirente
-  mieAcquisti.forEach(abbon => {
-    const prezzo = prezziSettore[abbon.settore] || 'N/A';
-    
-    container.innerHTML += `
-      <div class="abbo-card">
-        <div class="card-header">
-          <h3>${abbon.matchDesc}</h3>
-          <span class="badge badge-trattativa">IN TRATTATIVA</span>
-        </div>
-        <p>Settore: ${abbon.settore} - Prezzo: € ${formatPriceWithComma(prezzo)}</p>
-        <p class="role-indicator"><strong>Ruolo:</strong> Acquirente</p>
-        <div class="row-actions">
-          <button class="btn-open-chat" onclick="openChatModal('${abbon.id}')">Chat</button>
-          <button class="btn-cancel-sale" onclick="annullaAcquisto('${abbon.id}')">Annulla acquisto</button>
-        </div>
-      </div>
-    `;
-  });
+    // Pulisci container
+    container.innerHTML = '';
 
-  if (container.innerHTML === '') {
-    container.innerHTML = '<p>Nessuna trattativa aperta al momento.</p>';
+    // Crea mappa richieste per abbonamenti venditore (richieste ricevute)
+    const richiesteVenditoreMap = new Map();
+    richiesteVenditore.forEach(doc => {
+      const richiesta = { id: doc.id, ...doc.data() };
+      richiesteVenditoreMap.set(richiesta.abbonamentoId, richiesta);
+    });
+
+    // === SEZIONE: I TUOI ABBONAMENTI IN VENDITA ===
+    if (mieVendite.length > 0) {
+      const sectionVendite = document.createElement('div');
+      sectionVendite.className = 'subscription-section';
+      
+      const titleVendite = document.createElement('h3');
+      titleVendite.className = 'section-subtitle';
+      titleVendite.innerHTML = '💰 I Tuoi Abbonamenti in Vendita';
+      sectionVendite.appendChild(titleVendite);
+
+      mieVendite.forEach(abbon => {
+        const prezzo = prezziSettore[abbon.settore] || 'N/A';
+        const richiesta = richiesteVenditoreMap.get(abbon.id);
+        const hasRichiesta = richiesta && richiesta.stato === 'pending';
+        
+        const div = document.createElement('div');
+        div.className = 'abbo-card vendita-card';
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'card-header';
+        
+        const title = document.createElement('h4');
+        title.textContent = abbon.matchDesc;
+        
+        const badge = document.createElement('span');
+        let badgeText = '📋 IN VENDITA';
+        let badgeClass = 'badge badge-vendita';
+        
+        if (richiesta) {
+          const stato = richiesta.stato;
+          if (stato === 'pending') {
+            badgeText = '📩 RICHIESTA IN CORSO';
+            badgeClass = 'badge badge-interesse';
+          } else if (stato === 'accepted') {
+            badgeText = '🤝 DATI CONDIVISI';
+            badgeClass = 'badge badge-accepted';
+          } else if (stato === 'completed') {
+            badgeText = '✅ VENDUTO E CONCLUSO';
+            badgeClass = 'badge badge-completed';
+          }
+        }
+        
+        badge.className = badgeClass;
+        badge.textContent = badgeText;
+        
+        header.appendChild(title);
+        header.appendChild(badge);
+        
+        // Dettagli
+        const details = document.createElement('div');
+        details.className = 'card-details';
+        details.innerHTML = `
+          <p><strong>Settore:</strong> ${abbon.settore}</p>
+          <p><strong>Prezzo:</strong> €${formatPriceWithComma(prezzo)}</p>
+          <p class="role-indicator"><strong>Ruolo:</strong> Venditore</p>
+        `;
+        
+        // Richiesta di interesse se presente
+        if (richiesta && richiesta.stato === 'pending') {
+          const richiestaDiv = document.createElement('div');
+          richiestaDiv.className = 'richiesta-interesse';
+          richiestaDiv.innerHTML = `
+            <div class="richiesta-header">
+              <span class="richiesta-icon">👋</span>
+              <strong>${richiesta.buyerName}</strong>
+              <span class="richiesta-tipo">è interessato</span>
+            </div>
+            <p class="richiesta-data">📅 ${new Date(richiesta.timestamp.toDate()).toLocaleDateString('it-IT')}</p>
+          `;
+          
+          // Pulsanti azione
+          const actions = document.createElement('div');
+          actions.className = 'row-actions';
+          
+          const btnAccetta = document.createElement('button');
+          btnAccetta.className = 'btn-success btn-accetta-interesse';
+          btnAccetta.innerHTML = '<span>✅</span> Accetta e Condividi Contatti';
+          btnAccetta.onclick = () => accettaRichiestaFirebase(richiesta.id);
+          
+          const btnRifiuta = document.createElement('button');
+          btnRifiuta.className = 'btn-danger btn-rifiuta-interesse';
+          btnRifiuta.innerHTML = '<span>❌</span> Rifiuta';
+          btnRifiuta.onclick = () => rifiutaRichiestaFirebase(richiesta.id);
+          
+          actions.appendChild(btnAccetta);
+          actions.appendChild(btnRifiuta);
+          richiestaDiv.appendChild(actions);
+          details.appendChild(richiestaDiv);
+        }
+        
+        // Assembla card
+        div.appendChild(header);
+        div.appendChild(details);
+        
+        sectionVendite.appendChild(div);
+      });
+      
+      container.appendChild(sectionVendite);
+    }
+
+    // === SEZIONE: LE TUE RICHIESTE INVIATE ===
+    if (!richiesteAcquirente.empty) {
+      const sectionRichieste = document.createElement('div');
+      sectionRichieste.className = 'subscription-section';
+      
+      const titleRichieste = document.createElement('h3');
+      titleRichieste.className = 'section-subtitle';
+      titleRichieste.innerHTML = '📤 Le Tue Richieste di Interesse';
+      sectionRichieste.appendChild(titleRichieste);
+
+      richiesteAcquirente.forEach(doc => {
+        const richiesta = { id: doc.id, ...doc.data() };
+        const abbon = abbonamenti.find(a => a.id === richiesta.abbonamentoId);
+        
+        if (!abbon) return; // Abbonamento non trovato
+        
+        const prezzo = prezziSettore[abbon.settore] || 'N/A';
+        
+        const div = document.createElement('div');
+        div.className = 'abbo-card richiesta-card';
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'card-header';
+        
+        const title = document.createElement('h4');
+        title.textContent = abbon.matchDesc;
+        
+        const badge = document.createElement('span');
+        badge.className = `badge badge-${richiesta.stato}`;
+        const statusText = {
+          'pending': '⏳ IN ATTESA RISPOSTA',
+          'accepted': '💰 PAGAMENTO DA EFFETTUARE',
+          'rejected': '❌ RIFIUTATA',
+          'completed': '✅ ABBONAMENTO ACQUISTATO'
+        };
+        badge.textContent = statusText[richiesta.stato] || '❓ SCONOSCIUTO';
+        
+        header.appendChild(title);
+        header.appendChild(badge);
+        
+        // Dettagli
+        const details = document.createElement('div');
+        details.className = 'card-details';
+        details.innerHTML = `
+          <p><strong>Settore:</strong> ${abbon.settore}</p>
+          <p><strong>Prezzo:</strong> €${formatPriceWithComma(prezzo)}</p>
+          <p><strong>Tipo interesse:</strong> 👋 Interessato</p>
+          <p><strong>Inviata il:</strong> ${new Date(richiesta.timestamp.toDate()).toLocaleDateString('it-IT')}</p>
+          <p class="role-indicator"><strong>Ruolo:</strong> Acquirente</p>
+        `;
+        
+        // Se accettata, mostra i contatti
+        if (richiesta.stato === 'accepted' && richiesta.venditorContatti) {
+          const contatti = document.createElement('div');
+          contatti.className = 'contatti-venditore';
+          contatti.innerHTML = `
+            <div class="contatti-header">
+              <h5>📞 Contatti del Venditore:</h5>
+            </div>
+            <p><strong>📧 Email:</strong> ${richiesta.venditorContatti.email}</p>
+            <p><strong>📱 Telefono:</strong> ${richiesta.venditorContatti.telefono}</p>
+            <div class="contatti-note">
+              <p><em>💡 Contatta il venditore per accordarvi sui dettagli della vendita!</em></p>
+            </div>
+          `;
+          
+          // Pulsante per confermare pagamento effettuato
+          const btnPagato = document.createElement('button');
+          btnPagato.className = 'btn-success btn-conferma-pagamento';
+          btnPagato.innerHTML = '<span>💳</span> Ho Effettuato il Pagamento';
+          btnPagato.onclick = () => confermaPagamentoEffettuatoFirebase(richiesta.id);
+          
+          contatti.appendChild(btnPagato);
+          details.appendChild(contatti);
+        } else if (richiesta.stato === 'completed') {
+          // Mostra messaggio di completamento
+          const completato = document.createElement('div');
+          completato.className = 'transazione-completata';
+          completato.innerHTML = `
+            <div class="completamento-header">
+              <h5>🎉 Transazione Completata!</h5>
+            </div>
+            <p>Hai acquistato con successo questo abbonamento.</p>
+            <p><em>Goditi la partita! ⚽</em></p>
+          `;
+          details.appendChild(completato);
+        }
+        
+        // Assembla card
+        div.appendChild(header);
+        div.appendChild(details);
+        
+        sectionRichieste.appendChild(div);
+      });
+      
+      container.appendChild(sectionRichieste);
+    }
+
+    // Messaggio se non ci sono abbonamenti o richieste
+    if (mieVendite.length === 0 && richiesteAcquirente.empty) {
+      container.innerHTML = `
+        <div class="no-subscriptions">
+          <p>📭 Non hai abbonamenti in vendita o richieste di interesse.</p>
+          <p>Inizia pubblicando un abbonamento o mostrando interesse per uno esistente!</p>
+        </div>
+      `;
+    }
+
+  } catch (error) {
+    console.error('❌ Errore caricamento trattative:', error);
+    container.innerHTML = '<p>Errore nel caricamento delle trattative. Riprova più tardi.</p>';
   }
 }
 
 // --- SISTEMA NOTIFICHE AVANZATO ---
 let notificationDropdownOpen = false;
-let userReadMessages = JSON.parse(localStorage.getItem('userReadMessages')) || {};
+let userReadMessages;
+
+// Inizializza userReadMessages in modo sicuro
+try {
+  userReadMessages = JSON.parse(localStorage.getItem('userReadMessages')) || {};
+} catch (error) {
+  console.error('❌ Errore nel parsing di userReadMessages da localStorage:', error);
+  userReadMessages = {};
+}
 
 // Inizializza i messaggi letti per l'utente corrente
 function initUserReadMessages() {
-  if (!loggedInUser) return;
-  if (!userReadMessages[loggedInUser.username]) {
-    userReadMessages[loggedInUser.username] = {};
+  if (!loggedInUser || !loggedInUser.uid) return;
+  
+  try {
+    // Inizializza userReadMessages se non esiste
+    if (!userReadMessages) {
+      console.log('🔖 Inizializzando userReadMessages globale');
+      userReadMessages = {};
+    }
+    
+    // Inizializza l'oggetto utente se non esiste
+    if (!userReadMessages[loggedInUser.uid]) {
+      console.log('🔖 Inizializzando userReadMessages per utente:', loggedInUser.uid);
+      userReadMessages[loggedInUser.uid] = {};
+    }
+  } catch (error) {
+    console.error('❌ Errore in initUserReadMessages:', error);
+    userReadMessages = {};
+    if (loggedInUser && loggedInUser.uid) {
+      userReadMessages[loggedInUser.uid] = {};
+    }
   }
 }
 
 // Segna un messaggio come letto
 function markMessageAsRead(abbonamentoId, messageIndex) {
-  if (!loggedInUser) return;
-  initUserReadMessages();
+  console.log('🔖 markMessageAsRead chiamata:', {abbonamentoId, messageIndex, loggedInUser: loggedInUser ? loggedInUser.uid : 'null'});
   
-  if (!userReadMessages[loggedInUser.username][abbonamentoId]) {
-    userReadMessages[loggedInUser.username][abbonamentoId] = [];
+  if (!loggedInUser || !loggedInUser.uid) {
+    console.warn('⚠️ loggedInUser o uid non disponibile');
+    return;
   }
   
-  if (!userReadMessages[loggedInUser.username][abbonamentoId].includes(messageIndex)) {
-    userReadMessages[loggedInUser.username][abbonamentoId].push(messageIndex);
-    localStorage.setItem('userReadMessages', JSON.stringify(userReadMessages));
-    updateNotificationCount();
+  if (!abbonamentoId || messageIndex === undefined || messageIndex === null) {
+    console.warn('⚠️ Parametri non validi:', {abbonamentoId, messageIndex});
+    return;
+  }
+  
+  // Inizializza userReadMessages se non esiste
+  if (!userReadMessages) {
+    console.log('🔖 Inizializzando userReadMessages da zero');
+    userReadMessages = {};
+  }
+  
+  // Usa sempre UID per consistenza con Firebase
+  const userId = loggedInUser.uid;
+  
+  console.log('🔖 userReadMessages stato:', {userId, hasUser: !!userReadMessages[userId], userReadMessages});
+  
+  // Controlli robuste per evitare errori
+  try {
+    // Assicurati che l'oggetto utente esista
+    if (!userReadMessages[userId]) {
+      console.log('🔖 Creando oggetto utente per:', userId);
+      userReadMessages[userId] = {};
+    }
+    
+    // Assicurati che l'array abbonamento esista
+    if (!userReadMessages[userId][abbonamentoId]) {
+      console.log('🔖 Creando array messaggi per abbonamento:', abbonamentoId);
+      userReadMessages[userId][abbonamentoId] = [];
+    }
+    
+    // Controlla se il messaggio è già letto
+    if (!userReadMessages[userId][abbonamentoId].includes(messageIndex)) {
+      userReadMessages[userId][abbonamentoId].push(messageIndex);
+      localStorage.setItem('userReadMessages', JSON.stringify(userReadMessages));
+      updateNotificationCount();
+      console.log('✅ Messaggio marcato come letto:', {abbonamentoId, messageIndex});
+    }
+  } catch (error) {
+    console.error('❌ Errore in markMessageAsRead:', error, {userId, abbonamentoId, messageIndex});
   }
 }
 
 // Controlla se un messaggio è già letto
 function isMessageRead(abbonamentoId, messageIndex) {
-  if (!loggedInUser) return false;
-  initUserReadMessages();
+  if (!loggedInUser || !loggedInUser.uid) return false;
   
-  const userMessages = userReadMessages[loggedInUser.username][abbonamentoId];
-  return userMessages && userMessages.includes(messageIndex);
+  if (!abbonamentoId || messageIndex === undefined || messageIndex === null) {
+    console.warn('⚠️ Parametri non validi in isMessageRead:', {abbonamentoId, messageIndex});
+    return false;
+  }
+  
+  const userId = loggedInUser.uid;
+  
+  try {
+    // Controlli extra robusti
+    if (!userReadMessages) {
+      console.warn('⚠️ userReadMessages non inizializzato in isMessageRead');
+      userReadMessages = {};
+      return false;
+    }
+    
+    if (!userReadMessages[userId]) {
+      console.log('🔖 Utente non ha messaggi letti ancora:', userId);
+      return false;
+    }
+    
+    if (!userReadMessages[userId][abbonamentoId]) {
+      console.log('🔖 Abbonamento non ha messaggi letti:', abbonamentoId);
+      return false;
+    }
+    
+    const isRead = userReadMessages[userId][abbonamentoId].includes(messageIndex);
+    console.log('🔖 isMessageRead check:', {abbonamentoId, messageIndex, isRead});
+    
+    return isRead;
+  } catch (error) {
+    console.error('❌ Errore in isMessageRead:', error, {userId, abbonamentoId, messageIndex});
+    return false;
+  }
 }
 
 // Conta i messaggi non letti
@@ -1569,7 +2581,8 @@ function getUnreadCount() {
     
     abbon.messaggiChat.forEach((msg, index) => {
       // Conta solo messaggi ricevuti (non inviati dall'utente corrente) e non letti
-      if (msg.sender !== loggedInUser.username && !isMessageRead(abbon.id, index)) {
+      // Usa sia UID che username per compatibilità con messaggi vecchi e nuovi
+      if (msg.sender !== loggedInUser.uid && msg.sender !== loggedInUser.username && !isMessageRead(abbon.id, index)) {
         count++;
       }
     });
@@ -1655,7 +2668,8 @@ function populateNotificationList() {
     
     abbon.messaggiChat.forEach((msg, index) => {
       // Solo messaggi ricevuti (non inviati dall'utente corrente)
-      if (msg.sender !== loggedInUser.username) {
+      // Usa sia UID che username per compatibilità
+      if (msg.sender !== loggedInUser.uid && msg.sender !== loggedInUser.username) {
         const isRead = isMessageRead(abbon.id, index);
         allNotifications.push({
           abbonamento: abbon,
@@ -1896,42 +2910,38 @@ document.addEventListener('DOMContentLoaded', ()=>{
   setInterval(updateLiveDateTime, 1000);
 });
 
-// Handler acquisto locale
-window.handleAcquista = function(id){
-  console.log('🎯 handleAcquista chiamata con ID:', id);
-  console.log('👤 Utente loggato:', loggedInUser);
-  console.log('📦 Abbonamenti disponibili:', abbonamenti.length);
+// 🆕 Nuovo sistema interesse semplificato
+window.handleInteresse = async function(id, tipoInteresse) {
+  console.log('🎯 handleInteresse chiamata con ID:', id, 'Tipo:', tipoInteresse);
   
   if (!loggedInUser) {
-    alert('Devi effettuare il login per aprire la trattativa.');
+    showToast('❌ Devi effettuare il login per mostrare interesse', 'error');
     toggleModal(true);
     return;
   }
   
   const abbon = abbonamenti.find(a => a.id === id);
-  console.log('🎫 Abbonamento trovato:', abbon);
   if (!abbon) {
     console.error('❌ Abbonamento non trovato per ID:', id);
+    showToast('❌ Abbonamento non trovato', 'error');
     return;
   }
   
-  // Se non sei già in trattativa
-  if (!abbon.buyerName) {
-    abbon.buyerName = loggedInUser.username;
-    abbon.inTrattativa = true;
-    
-    // � Salva SOLO su localStorage (stabile)
-    localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
-    
-    // Firebase opzionale in background
-    setTimeout(() => {
-      try {
-        updateAbbonamentoFirebase(abbon).catch(() => {});
-      } catch (e) {}
-    }, 100);
+  // Controlla se non è il proprio abbonamento
+  if (abbon.utente === loggedInUser.uid) {
+    showToast('❌ Non puoi mostrare interesse per il tuo abbonamento', 'error');
+    return;
   }
-  openChatModal(id);
-  aggiornaTrattative();
+  
+  // Apri modal conferma interesse
+  openConfermaInteresseModal(id, tipoInteresse);
+};
+
+// Vecchia funzione mantenuta per compatibilità (ora disabilitata)
+window.handleAcquista = async function(id){
+  showToast('⚠️ Sistema chat sostituito con messaggi prestabiliti', 'info');
+  console.log('� handleAcquista deprecata, reindirizzando a handleInteresse');
+  handleInteresse(id, 'interessato');
 };
 
 // Trattative
@@ -1957,47 +2967,79 @@ function aggiornaTrattative() {
   });
 }
 
-function annullaTrattativa(id) {
+async function annullaTrattativa(id) {
   console.log('🗑️ annullaTrattativa chiamata con ID:', id);
   console.log('🔥 Firebase db disponibile:', !!db);
   
-  // � Cancella SUBITO da localStorage (funziona sempre)
-  abbonamenti = abbonamenti.filter(a => a.id !== id);
-  localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
+  if (!loggedInUser) {
+    showToast('❌ Devi essere loggato per annullare', 'error');
+    return;
+  }
   
-  loadHomeListings();
-  loadMySubscription();
-  updateBookingCounter();
-  alert('Trattativa annullata e abbonamento cancellato.');
-  
-  // Firebase opzionale in background
-  setTimeout(() => {
-    try {
-      db.collection('abbonamenti').doc(id).delete().catch(() => {});
-    } catch (e) {}
-  }, 100);
-}
-
-function annullaAcquisto(id) {
   const abbon = abbonamenti.find(a => a.id === id);
-  if (!abbon) return;
+  if (!abbon) {
+    showToast('❌ Abbonamento non trovato', 'error');
+    return;
+  }
   
-  // Rimuovi solo la trattativa dell'acquirente
-  if (abbon.buyerName === loggedInUser.username) {
-    abbon.buyerName = null;
-    abbon.inTrattativa = false;
+  // Verifica che sia il proprietario
+  if (abbon.utente !== loggedInUser.uid) {
+    showToast('❌ Puoi annullare solo i tuoi abbonamenti', 'error');
+    return;
+  }
+  
+  // � Cancella SUBITO da localStorage (funziona sempre)
+  try {
+    // ✅ Cancella DIRETTAMENTE da Firebase
+    await db.collection('abbonamenti').doc(id).delete();
     
-    // 🔥 Aggiorna Firebase
-    updateAbbonamentoFirebase(abbon).then(() => {
-      console.log('✅ Trattativa annullata su Firebase');
-    }).catch(err => {
-      console.error('❌ Errore aggiornamento Firebase:', err);
-    });
+    // Rimuovi dall'array locale
+    abbonamenti = abbonamenti.filter(a => a.id !== id);
     
-    localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
+    console.log('✅ Abbonamento cancellato da Firebase');
+    showToast('✅ Trattativa annullata e abbonamento cancellato', 'success');
+    
+    // Aggiorna UI
+    loadHomeListings();
     loadMySubscription();
     updateBookingCounter();
-    alert('Hai annullato la trattativa.');
+    
+  } catch (error) {
+    console.error('❌ Errore cancellazione:', error);
+    showToast('❌ Errore durante la cancellazione', 'error');
+  }
+}
+
+async function annullaAcquisto(id) {
+  const abbon = abbonamenti.find(a => a.id === id);
+  if (!abbon) {
+    showToast('❌ Abbonamento non trovato', 'error');
+    return;
+  }
+  
+  // Rimuovi solo la trattativa dell'acquirente
+  if (abbon.buyerName === loggedInUser.uid) {
+    abbon.buyerName = null;
+    abbon.buyerEmail = null;
+    abbon.buyerNome = null;
+    abbon.buyerCognome = null;
+    abbon.inTrattativa = false;
+    
+    try {
+      // ✅ Aggiorna Firebase
+      await updateFirebaseAbbonamento(abbon.id, abbon);
+      console.log('✅ Trattativa annullata su Firebase');
+      showToast('✅ Hai annullato la trattativa', 'success');
+      
+      loadMySubscription();
+      updateBookingCounter();
+      
+    } catch (error) {
+      console.error('❌ Errore aggiornamento Firebase:', error);
+      showToast('❌ Errore durante l\'annullamento', 'error');
+    }
+  } else {
+    showToast('❌ Non puoi annullare questa trattativa', 'error');
   }
 }
 
@@ -2088,43 +3130,61 @@ function closeDatiVenditaModal() {
   if (modal) modal.style.display = 'none';
 }
 
-function sendMessage() {
+async function sendMessage() {
   const input = document.getElementById('chatInput');
   if (!input || !currentChatAbbonamento || !loggedInUser) return;
   const text = input.value.trim();
   if (!text) return;
   
   // Aggiungi messaggio con timestamp
-  currentChatAbbonamento.messaggiChat.push({
-    sender: loggedInUser.username,
+  const newMessage = {
+    sender: loggedInUser.uid,
+    senderName: getUserDisplayName(loggedInUser),
     text: text,
     timestamp: Date.now()
-  });
+  };
+  
+  currentChatAbbonamento.messaggiChat.push(newMessage);
   
   // � Salva SUBITO su localStorage
-  localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
   
-  // Firebase opzionale
-  setTimeout(() => {
-    try {
-      updateAbbonamentoFirebase(currentChatAbbonamento).catch(() => {});
-    } catch (e) {}
-  }, 100);
+  // ✅ Salva DIRETTAMENTE su Firebase
+  try {
+    await updateFirebaseAbbonamento(currentChatAbbonamento.id, currentChatAbbonamento);
+    console.log('✅ Messaggio salvato su Firebase');
+  } catch (error) {
+    console.error('❌ Errore salvataggio messaggio:', error);
+    showToast('❌ Errore invio messaggio', 'error');
+    return;
+  }
   input.value = '';
   loadChatMessages();
   updateNotificationCount();
   
   // 📧 Invia email notification al destinatario
   try {
-    const recipientUsername = currentChatAbbonamento.utente === loggedInUser.username 
+    const recipientUid = currentChatAbbonamento.utente === loggedInUser.uid 
       ? currentChatAbbonamento.buyerName 
       : currentChatAbbonamento.utente;
     
-    const recipient = users.find(u => u.username === recipientUsername);
+    // Se abbiamo l'email del venditore nell'abbonamento, usiamola
+    let recipientEmail = null;
+    if (recipientUid === currentChatAbbonamento.utente) {
+      recipientEmail = currentChatAbbonamento.utenteEmail;
+    } else {
+      // Per l'acquirente, dovremmo avere un campo buyerEmail (da implementare)
+      console.log('⚠️ Email acquirente non disponibile per notifica');
+    }
     
-    if (recipient && recipient.email) {
+    if (recipientEmail) {
+      const recipientData = {
+        email: recipientEmail,
+        nome: currentChatAbbonamento.utenteNome || 'Utente',
+        cognome: currentChatAbbonamento.utenteCognome || ''
+      };
+      
       EmailService.sendNewMessageNotification(
-        recipient,
+        recipientData,
         loggedInUser,
         text,
         currentChatAbbonamento.matchDesc
@@ -2143,8 +3203,10 @@ function sendMessage() {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Inizializzazione sito Ti Presto...');
   
-  // 🔥 Sincronizza dati Firebase
-  syncFirebaseData();
+  // 🔥 Carica abbonamenti da Firebase se disponibile
+  if (typeof loadAbbonamentifromFirebase === 'function') {
+    loadAbbonamentifromFirebase();
+  }
   
   // Inizializza UI
   updateLoginLogoutButtons();
@@ -2186,6 +3248,17 @@ function updateLiveDateTime() {
 
 // Event listener per tasto Enter nella chat e inizializzazione preferenze
 document.addEventListener('DOMContentLoaded', function() {
+  // 🔥 Inizializza Firebase Auth
+  initFirebaseAuth();
+  
+  // 📦 Carica abbonamenti iniziali (lettura pubblica)
+  setTimeout(() => {
+    if (abbonamenti.length === 0) {
+      console.log('🔄 Caricamento abbonamenti iniziale...');
+      loadAbbonamenti();
+    }
+  }, 2000); // Aspetta che Firebase Auth si inizializzi
+  
   const chatInput = document.getElementById('chatInput');
   if (chatInput) {
     chatInput.addEventListener('keydown', function(event) {
@@ -2572,3 +3645,1834 @@ function testCookieBanner() {
 
 // Make debug function available in console
 window.testCookieBanner = testCookieBanner;
+
+// ===============================
+// SISTEMA FEEDBACK UTENTI
+// ===============================
+
+// Variabili globali per il feedback
+let feedbackData = {
+  type: '',
+  overallRating: 0,
+  specificRatings: {
+    usability: 0,
+    speed: 0,
+    design: 0
+  },
+  message: '',
+  bugDetails: {},
+  contactInfo: {},
+  techInfo: {},
+  timestamp: null
+};
+
+// Inizializza il sistema di feedback
+function initializeFeedbackSystem() {
+  // Raccogli informazioni tecniche automaticamente
+  collectTechInfo();
+  
+  // Setup event listeners per le stelle
+  setupStarRatings();
+  
+  // Setup form validations
+  setupFeedbackFormValidation();
+  
+  console.log('Sistema feedback inizializzato');
+}
+
+// Raccogli informazioni tecniche del dispositivo
+function collectTechInfo() {
+  const nav = navigator;
+  const screen = window.screen;
+  const performance = window.performance;
+  
+  feedbackData.techInfo = {
+    userAgent: nav.userAgent,
+    platform: nav.platform,
+    language: nav.language,
+    cookieEnabled: nav.cookieEnabled,
+    onLine: nav.onLine,
+    screenResolution: `${screen.width}x${screen.height}`,
+    colorDepth: screen.colorDepth,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    connection: nav.connection ? {
+      effectiveType: nav.connection.effectiveType,
+      downlink: nav.connection.downlink,
+      rtt: nav.connection.rtt
+    } : 'N/A',
+    memory: nav.deviceMemory || 'N/A',
+    cores: nav.hardwareConcurrency || 'N/A',
+    loadTime: performance.timing ? 
+      (performance.timing.loadEventEnd - performance.timing.navigationStart) : 'N/A'
+  };
+  
+  // Aggiorna display delle info tecniche
+  updateTechInfoDisplay();
+}
+
+// Aggiorna la visualizzazione delle info tecniche
+function updateTechInfoDisplay() {
+  const techDetails = document.getElementById('techDetails');
+  if (!techDetails) return;
+  
+  const info = feedbackData.techInfo;
+  techDetails.innerHTML = `
+    <div class="tech-detail-item">
+      <strong>Browser:</strong> ${getBrowserName(info.userAgent)}
+    </div>
+    <div class="tech-detail-item">
+      <strong>Sistema:</strong> ${getOSName(info.userAgent)}
+    </div>
+    <div class="tech-detail-item">
+      <strong>Risoluzione:</strong> ${info.screenResolution}
+    </div>
+    <div class="tech-detail-item">
+      <strong>Viewport:</strong> ${info.viewport}
+    </div>
+    <div class="tech-detail-item">
+      <strong>Connessione:</strong> ${info.connection !== 'N/A' ? info.connection.effectiveType : 'N/A'}
+    </div>
+    <div class="tech-detail-item">
+      <strong>Tempo caricamento:</strong> ${info.loadTime !== 'N/A' ? info.loadTime + 'ms' : 'N/A'}
+    </div>
+  `;
+}
+
+// Utility per rilevare browser
+function getBrowserName(userAgent) {
+  if (userAgent.includes('Chrome')) return 'Google Chrome';
+  if (userAgent.includes('Firefox')) return 'Mozilla Firefox';
+  if (userAgent.includes('Safari')) return 'Safari';
+  if (userAgent.includes('Edge')) return 'Microsoft Edge';
+  if (userAgent.includes('Opera')) return 'Opera';
+  return 'Browser sconosciuto';
+}
+
+// Utility per rilevare OS
+function getOSName(userAgent) {
+  if (userAgent.includes('Windows')) return 'Windows';
+  if (userAgent.includes('Mac')) return 'macOS';
+  if (userAgent.includes('Linux')) return 'Linux';
+  if (userAgent.includes('Android')) return 'Android';
+  if (userAgent.includes('iOS')) return 'iOS';
+  return 'Sistema sconosciuto';
+}
+
+// Setup del sistema di rating a stelle
+function setupStarRatings() {
+  // Rating principale
+  const mainStars = document.querySelectorAll('.star');
+  mainStars.forEach((star, index) => {
+    star.addEventListener('click', () => setMainRating(index + 1));
+    star.addEventListener('mouseenter', () => highlightStars(mainStars, index + 1));
+  });
+  
+  const starContainer = document.querySelector('.star-rating');
+  if (starContainer) {
+    starContainer.addEventListener('mouseleave', () => {
+      highlightStars(mainStars, feedbackData.overallRating);
+    });
+  }
+  
+  // Rating specifici
+  const miniRatings = document.querySelectorAll('.mini-star-rating');
+  miniRatings.forEach(rating => {
+    const category = rating.dataset.category;
+    const stars = rating.querySelectorAll('.mini-star');
+    
+    stars.forEach((star, index) => {
+      star.addEventListener('click', () => setSpecificRating(category, index + 1));
+      star.addEventListener('mouseenter', () => highlightStars(stars, index + 1));
+    });
+    
+    rating.addEventListener('mouseleave', () => {
+      highlightStars(stars, feedbackData.specificRatings[category]);
+    });
+  });
+}
+
+// Imposta rating principale
+function setMainRating(rating) {
+  feedbackData.overallRating = rating;
+  
+  const stars = document.querySelectorAll('.star');
+  highlightStars(stars, rating);
+  
+  const ratingText = document.getElementById('ratingText');
+  const texts = ['', 'Pessimo', 'Scarso', 'Discreto', 'Buono', 'Eccellente'];
+  ratingText.textContent = `${rating}/5 - ${texts[rating]}`;
+  ratingText.style.color = rating >= 4 ? '#28a745' : rating >= 3 ? '#ffc107' : '#dc3545';
+}
+
+// Imposta rating specifico
+function setSpecificRating(category, rating) {
+  feedbackData.specificRatings[category] = rating;
+  
+  const ratingElement = document.querySelector(`[data-category="${category}"]`);
+  const stars = ratingElement.querySelectorAll('.mini-star');
+  highlightStars(stars, rating);
+}
+
+// Evidenzia le stelle
+function highlightStars(stars, count) {
+  stars.forEach((star, index) => {
+    if (index < count) {
+      star.classList.add('active');
+    } else {
+      star.classList.remove('active');
+    }
+  });
+}
+
+// Setup validazione form
+function setupFeedbackFormValidation() {
+  const emailInput = document.getElementById('feedbackEmail');
+  const phoneInput = document.getElementById('feedbackPhone');
+  
+  if (emailInput) {
+    emailInput.addEventListener('blur', validateEmail);
+  }
+  
+  if (phoneInput) {
+    phoneInput.addEventListener('input', formatPhoneNumber);
+  }
+}
+
+// Validazione email
+function validateEmail() {
+  const emailInput = document.getElementById('feedbackEmail');
+  const email = emailInput.value.trim();
+  
+  if (email && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+    emailInput.style.borderColor = '#dc3545';
+    showToast('Email non valida', 'error');
+    return false;
+  } else {
+    emailInput.style.borderColor = '#28a745';
+    return true;
+  }
+}
+
+// Formattazione numero telefono
+function formatPhoneNumber(e) {
+  let value = e.target.value.replace(/\D/g, '');
+  if (value.length >= 10) {
+    value = value.substring(0, 10);
+    value = value.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
+  }
+  e.target.value = value;
+}
+
+// Apri modal feedback
+function openFeedbackModal() {
+  // Traccia evento apertura feedback
+  trackFeedbackEvent('feedback_modal_opened');
+  
+  // Reset form
+  resetFeedbackForm();
+  
+  // Raccogli info tecniche aggiornate
+  collectTechInfo();
+  
+  // Mostra modal
+  document.getElementById('feedbackModal').style.display = 'flex';
+  
+  // Auto-popola email se utente è loggato
+  if (currentUser && currentUser.email) {
+    document.getElementById('feedbackEmail').value = currentUser.email;
+  }
+}
+
+// Chiudi modal feedback
+function closeFeedbackModal() {
+  document.getElementById('feedbackModal').style.display = 'none';
+  trackFeedbackEvent('feedback_modal_closed');
+}
+
+// Reset del form feedback
+function resetFeedbackForm() {
+  feedbackData = {
+    type: '',
+    overallRating: 0,
+    specificRatings: { usability: 0, speed: 0, design: 0 },
+    message: '',
+    bugDetails: {},
+    contactInfo: {},
+    techInfo: {},
+    timestamp: null
+  };
+  
+  // Reset form elements
+  document.getElementById('feedbackType').selectedIndex = 0;
+  document.getElementById('feedbackMessage').value = '';
+  document.getElementById('feedbackEmail').value = '';
+  document.getElementById('feedbackPhone').value = '';
+  document.getElementById('contactConsent').checked = false;
+  
+  // Reset ratings
+  document.querySelectorAll('.star, .mini-star').forEach(star => {
+    star.classList.remove('active');
+  });
+  
+  // Hide conditional sections
+  document.getElementById('ratingSection').style.display = 'none';
+  document.getElementById('bugSection').style.display = 'none';
+  
+  // Reset rating text
+  const ratingText = document.getElementById('ratingText');
+  if (ratingText) {
+    ratingText.textContent = 'Clicca sulle stelle per valutare';
+    ratingText.style.color = '#002147';
+  }
+}
+
+// Aggiorna form in base al tipo di feedback
+function updateFeedbackForm() {
+  const type = document.getElementById('feedbackType').value;
+  feedbackData.type = type;
+  
+  // Nascondi tutte le sezioni condizionali
+  document.getElementById('ratingSection').style.display = 'none';
+  document.getElementById('bugSection').style.display = 'none';
+  
+  // Mostra sezioni appropriate
+  if (type === 'rating') {
+    document.getElementById('ratingSection').style.display = 'block';
+  } else if (type === 'bug') {
+    document.getElementById('bugSection').style.display = 'block';
+  }
+  
+  // Aggiorna placeholder del messaggio
+  const messageField = document.getElementById('feedbackMessage');
+  const placeholders = {
+    suggestion: 'Condividi il tuo suggerimento per migliorare Ti Presto...',
+    bug: 'Descrivi il problema che hai riscontrato in dettaglio...',
+    rating: 'Racconta la tua esperienza con Ti Presto...',
+    feature: 'Quale nuova funzionalità vorresti vedere su Ti Presto?...',
+    compliment: 'Cosa ti è piaciuto di più di Ti Presto?...'
+  };
+  
+  messageField.placeholder = placeholders[type] || 'Il tuo messaggio...';
+  
+  trackFeedbackEvent('feedback_type_selected', { type });
+}
+
+// Invia feedback
+async function submitFeedback() {
+  // Validazione base
+  if (!feedbackData.type) {
+    showToast('Seleziona il tipo di feedback', 'error');
+    return;
+  }
+  
+  const message = document.getElementById('feedbackMessage').value.trim();
+  if (!message) {
+    showToast('Inserisci il tuo messaggio', 'error');
+    return;
+  }
+  
+  // Validazione email se fornita
+  const email = document.getElementById('feedbackEmail').value.trim();
+  if (email && !validateEmail()) {
+    return;
+  }
+  
+  // Raccolta dati finali
+  feedbackData.message = message;
+  feedbackData.timestamp = new Date().toISOString();
+  feedbackData.contactInfo = {
+    email: email,
+    phone: document.getElementById('feedbackPhone').value.trim(),
+    consent: document.getElementById('contactConsent').checked
+  };
+  
+  // Bug details se applicable
+  if (feedbackData.type === 'bug') {
+    feedbackData.bugDetails = {
+      severity: document.getElementById('bugSeverity').value,
+      steps: document.getElementById('bugSteps').value.trim()
+    };
+  }
+  
+  // Aggiungi info utente se loggato
+  if (currentUser) {
+    feedbackData.userInfo = {
+      username: currentUser.username,
+      registrationDate: currentUser.dataRegistrazione || 'N/A'
+    };
+  }
+  
+  try {
+    // Salva in Firebase
+    await saveFeedbackToFirebase(feedbackData);
+    
+    // Salva backup locale
+    saveFeedbackToLocalStorage(feedbackData);
+    
+    // Invia email se richiesto
+    if (feedbackData.contactInfo.consent && feedbackData.contactInfo.email) {
+      await sendFeedbackEmailNotification(feedbackData);
+    }
+    
+    // Invia notifica admin
+    await sendAdminFeedbackNotification(feedbackData);
+    
+    // Traccia evento
+    trackFeedbackEvent('feedback_submitted', {
+      type: feedbackData.type,
+      rating: feedbackData.overallRating,
+      hasEmail: !!feedbackData.contactInfo.email
+    });
+    
+    // Chiudi modal e mostra successo
+    closeFeedbackModal();
+    showToast('🎉 Grazie per il tuo feedback! Ti contatteremo presto.', 'success');
+    
+    // Mostra apprezzamento personalizzato
+    showFeedbackThankYou();
+    
+  } catch (error) {
+    console.error('Errore invio feedback:', error);
+    showToast('Errore durante l\'invio. Riprova più tardi.', 'error');
+  }
+}
+
+// Salva feedback in Firebase
+async function saveFeedbackToFirebase(feedback) {
+  try {
+    await db.collection('feedback').add({
+      ...feedback,
+      status: 'new',
+      adminResponse: null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('Feedback salvato in Firebase');
+  } catch (error) {
+    console.error('Errore salvataggio Firebase:', error);
+    throw error;
+  }
+}
+
+// Salva feedback in localStorage come backup
+function saveFeedbackToLocalStorage(feedback) {
+  try {
+    let localFeedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+    localFeedbacks.push({
+      ...feedback,
+      id: Date.now().toString(),
+      synced: false
+    });
+    localStorage.setItem('feedbacks', JSON.stringify(localFeedbacks));
+    console.log('Feedback salvato localmente');
+  } catch (error) {
+    console.error('Errore salvataggio locale:', error);
+  }
+}
+
+// Invia notifica email per feedback
+async function sendFeedbackEmailNotification(feedback) {
+  if (typeof emailjs === 'undefined') return;
+  
+  try {
+    const templateParams = {
+      user_name: feedback.userInfo?.username || 'Utente Anonimo',
+      feedback_type: feedback.type,
+      message: feedback.message,
+      rating: feedback.overallRating || 'N/A',
+      user_email: feedback.contactInfo.email,
+      timestamp: new Date(feedback.timestamp).toLocaleString('it-IT')
+    };
+    
+    await emailjs.send(
+      EMAIL_CONFIG.SERVICE_ID,
+      EMAIL_CONFIG.TEMPLATES.FEEDBACK || 'template_feedback',
+      templateParams
+    );
+    
+    console.log('Notifica email feedback inviata');
+  } catch (error) {
+    console.error('Errore invio email feedback:', error);
+  }
+}
+
+// Invia notifica admin per nuovo feedback
+async function sendAdminFeedbackNotification(feedback) {
+  if (typeof emailjs === 'undefined') return;
+  
+  try {
+    const adminEmail = 'dnagenoa@outlook.it'; // Email admin
+    
+    const templateParams = {
+      admin_email: adminEmail,
+      feedback_type: getFeedbackTypeName(feedback.type),
+      user_name: feedback.userInfo?.username || 'Utente Anonimo',
+      message: feedback.message,
+      rating: feedback.overallRating ? `${feedback.overallRating}/5 stelle` : 'N/A',
+      user_contact: feedback.contactInfo.email || 'N/A',
+      timestamp: new Date(feedback.timestamp).toLocaleString('it-IT'),
+      urgency: feedback.type === 'bug' ? (feedback.bugDetails?.severity === 'high' ? 'ALTA' : 'MEDIA') : 'NORMALE',
+      site_url: 'https://www.tiprestogenoa1893.it/'
+    };
+    
+    await emailjs.send(
+      EMAIL_CONFIG.SERVICE_ID,
+      'template_admin_feedback_notification',
+      templateParams
+    );
+    
+    console.log('Notifica admin feedback inviata');
+    
+    // Mostra notifica browser se supportato
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('🔴⚪ Ti Presto - Nuovo Feedback', {
+        body: `${getFeedbackTypeName(feedback.type)}: ${feedback.message.substring(0, 100)}...`,
+        icon: '/logo-ufficiale-genoa-cfc.png',
+        tag: 'feedback-notification'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Errore invio notifica admin:', error);
+  }
+}
+
+// Mostra messaggio di ringraziamento personalizzato
+function showFeedbackThankYou() {
+  const thankYouMessages = {
+    compliment: '🔴⚪ Forza Genoa! I tuoi complimenti ci motivano!',
+    suggestion: '💡 Grazie per il suggerimento! Lo valuteremo!',
+    bug: '🔧 Grazie per la segnalazione! Risolveremo presto!',
+    rating: '⭐ Grazie per la valutazione! Ci aiuta a migliorare!',
+    feature: '🚀 Idea interessante! La considereremo per i futuri aggiornamenti!'
+  };
+  
+  const message = thankYouMessages[feedbackData.type] || '🙏 Grazie per il tuo feedback!';
+  
+  setTimeout(() => {
+    showToast(message, 'success');
+  }, 1000);
+}
+
+// Traccia eventi feedback per analytics
+function trackFeedbackEvent(eventName, data = {}) {
+  try {
+    // Firebase Analytics
+    if (typeof firebase !== 'undefined' && firebase.analytics) {
+      firebase.analytics().logEvent(eventName, {
+        ...data,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Google Analytics (se presente)
+    if (typeof gtag !== 'undefined') {
+      gtag('event', eventName, data);
+    }
+    
+    console.log('Feedback event tracked:', eventName, data);
+  } catch (error) {
+    console.error('Errore tracking evento:', error);
+  }
+}
+
+// ===============================
+// ANALYTICS COMPORTAMENTALI
+// ===============================
+
+// Variabili per tracking comportamentale
+let userSession = {
+  startTime: Date.now(),
+  pageViews: [],
+  actions: [],
+  currentSection: 'home',
+  searchQueries: [],
+  clickStream: []
+};
+
+// Inizializza analytics comportamentali
+function initializeBehavioralAnalytics() {
+  // Traccia inizio sessione
+  trackUserAction('session_start', {
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    referrer: document.referrer || 'direct'
+  });
+  
+  // Setup tracking per navigazione
+  setupNavigationTracking();
+  
+  // Setup tracking per form interactions
+  setupFormTracking();
+  
+  // Setup tracking per ricerche
+  setupSearchTracking();
+  
+  // Setup tracking per click generici
+  setupClickTracking();
+  
+  // Setup tracking per scroll e tempo sulla pagina
+  setupEngagementTracking();
+  
+  console.log('Analytics comportamentali inizializzati');
+}
+
+// Setup tracking navigazione
+function setupNavigationTracking() {
+  // Override showSection per tracciare navigazione
+  const originalShowSection = window.showSection;
+  window.showSection = function(sectionId) {
+    // Traccia cambio sezione
+    trackUserAction('section_change', {
+      from: userSession.currentSection,
+      to: sectionId,
+      timestamp: new Date().toISOString()
+    });
+    
+    userSession.currentSection = sectionId;
+    userSession.pageViews.push({
+      section: sectionId,
+      timestamp: Date.now(),
+      timeSpent: 0
+    });
+    
+    // Chiama funzione originale
+    return originalShowSection.call(this, sectionId);
+  };
+}
+
+// Setup tracking form interactions
+function setupFormTracking() {
+  // Traccia interazioni con form di login
+  const loginForm = document.querySelector('#loginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', () => {
+      trackUserAction('login_attempt', {
+        timestamp: new Date().toISOString()
+      });
+    });
+  }
+  
+  // Traccia inserimento abbonamenti
+  const addSubscriptionBtn = document.querySelector('#addSubscriptionBtn');
+  if (addSubscriptionBtn) {
+    addSubscriptionBtn.addEventListener('click', () => {
+      trackUserAction('add_subscription_start', {
+        timestamp: new Date().toISOString()
+      });
+    });
+  }
+}
+
+// Setup tracking ricerche
+function setupSearchTracking() {
+  // Monitora ricerche nel marketplace
+  const searchInputs = document.querySelectorAll('input[type="search"], input[placeholder*="cerca"]');
+  searchInputs.forEach(input => {
+    let searchTimeout;
+    input.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const query = e.target.value.trim();
+        if (query.length >= 3) {
+          trackUserAction('search_query', {
+            query: query,
+            section: userSession.currentSection,
+            timestamp: new Date().toISOString()
+          });
+          
+          userSession.searchQueries.push({
+            query: query,
+            timestamp: Date.now(),
+            section: userSession.currentSection
+          });
+        }
+      }, 500);
+    });
+  });
+}
+
+// Setup tracking click generici
+function setupClickTracking() {
+  // Traccia click su elementi importanti
+  document.addEventListener('click', (e) => {
+    const target = e.target;
+    
+    // Click su abbonamenti
+    if (target.closest('.abbonamento-card')) {
+      trackUserAction('subscription_card_click', {
+        cardType: 'abbonamento',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Click su pulsanti principali
+    if (target.matches('button') && target.textContent) {
+      const buttonText = target.textContent.trim();
+      if (buttonText.length > 0 && buttonText.length < 50) {
+        trackUserAction('button_click', {
+          buttonText: buttonText,
+          section: userSession.currentSection,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    
+    // Click su link esterni
+    if (target.matches('a[href^="http"]')) {
+      trackUserAction('external_link_click', {
+        url: target.href,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+}
+
+// Setup tracking engagement (scroll, tempo)
+function setupEngagementTracking() {
+  let scrollDepth = 0;
+  let maxScroll = 0;
+  
+  // Tracking scroll depth
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.pageYOffset;
+    const docHeight = document.body.scrollHeight - window.innerHeight;
+    scrollDepth = Math.round((scrollTop / docHeight) * 100);
+    
+    if (scrollDepth > maxScroll) {
+      maxScroll = scrollDepth;
+      
+      // Traccia milestone di scroll
+      if (maxScroll >= 25 && maxScroll < 50 && !userSession.scroll25) {
+        userSession.scroll25 = true;
+        trackUserAction('scroll_depth', { depth: 25 });
+      } else if (maxScroll >= 50 && maxScroll < 75 && !userSession.scroll50) {
+        userSession.scroll50 = true;
+        trackUserAction('scroll_depth', { depth: 50 });
+      } else if (maxScroll >= 75 && !userSession.scroll75) {
+        userSession.scroll75 = true;
+        trackUserAction('scroll_depth', { depth: 75 });
+      }
+    }
+  });
+  
+  // Tracking tempo sulla pagina (ogni 30 secondi)
+  setInterval(() => {
+    trackUserAction('time_on_page', {
+      section: userSession.currentSection,
+      totalTime: Date.now() - userSession.startTime,
+      timestamp: new Date().toISOString()
+    });
+  }, 30000);
+  
+  // Tracking uscita dalla pagina
+  window.addEventListener('beforeunload', () => {
+    const sessionDuration = Date.now() - userSession.startTime;
+    trackUserAction('session_end', {
+      duration: sessionDuration,
+      totalActions: userSession.actions.length,
+      sectionsVisited: [...new Set(userSession.pageViews.map(pv => pv.section))],
+      maxScrollDepth: maxScroll,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Salva sessione nel localStorage
+    saveSessionAnalytics();
+  });
+}
+
+// Funzione principale per tracciare azioni utente
+function trackUserAction(actionName, data = {}) {
+  const actionData = {
+    action: actionName,
+    timestamp: new Date().toISOString(),
+    section: userSession.currentSection,
+    user: currentUser ? currentUser.username : 'anonymous',
+    sessionId: userSession.startTime.toString(),
+    ...data
+  };
+  
+  // Aggiungi all'array delle azioni
+  userSession.actions.push(actionData);
+  
+  // Salva in Firebase Analytics se disponibile
+  saveActionToFirebase(actionData);
+  
+  // Salva in localStorage come backup
+  saveActionToLocalStorage(actionData);
+  
+  console.log('User action tracked:', actionName, data);
+}
+
+// Salva azione in Firebase
+async function saveActionToFirebase(actionData) {
+  try {
+    if (db) {
+      await db.collection('user_analytics').add({
+        ...actionData,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+  } catch (error) {
+    console.error('Errore salvataggio analytics Firebase:', error);
+  }
+}
+
+// Salva azione in localStorage
+function saveActionToLocalStorage(actionData) {
+  try {
+    let localAnalytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
+    localAnalytics.push(actionData);
+    
+    // Mantieni solo gli ultimi 500 eventi
+    if (localAnalytics.length > 500) {
+      localAnalytics = localAnalytics.slice(-500);
+    }
+    
+    localStorage.setItem('user_analytics', JSON.stringify(localAnalytics));
+  } catch (error) {
+    console.error('Errore salvataggio analytics locale:', error);
+  }
+}
+
+// Salva dati sessione completi
+function saveSessionAnalytics() {
+  try {
+    const sessionData = {
+      ...userSession,
+      endTime: Date.now(),
+      totalDuration: Date.now() - userSession.startTime
+    };
+    
+    let sessions = JSON.parse(localStorage.getItem('user_sessions') || '[]');
+    sessions.push(sessionData);
+    
+    // Mantieni solo le ultime 50 sessioni
+    if (sessions.length > 50) {
+      sessions = sessions.slice(-50);
+    }
+    
+    localStorage.setItem('user_sessions', JSON.stringify(sessions));
+  } catch (error) {
+    console.error('Errore salvataggio sessione:', error);
+  }
+}
+
+// Funzioni di utility per analytics
+function getEngagementMetrics() {
+  const sessionDuration = Date.now() - userSession.startTime;
+  const uniqueSections = [...new Set(userSession.pageViews.map(pv => pv.section))];
+  
+  return {
+    sessionDuration: sessionDuration,
+    sectionsVisited: uniqueSections.length,
+    totalActions: userSession.actions.length,
+    searchQueries: userSession.searchQueries.length,
+    averageTimePerSection: sessionDuration / uniqueSections.length,
+    engagementScore: calculateEngagementScore()
+  };
+}
+
+// Calcola punteggio di engagement
+function calculateEngagementScore() {
+  const metrics = {
+    duration: Math.min((Date.now() - userSession.startTime) / 60000, 10), // max 10 min
+    actions: Math.min(userSession.actions.length, 50), // max 50 azioni
+    sections: Math.min([...new Set(userSession.pageViews.map(pv => pv.section))].length, 6), // max 6 sezioni
+    searches: Math.min(userSession.searchQueries.length, 10) // max 10 ricerche
+  };
+  
+  // Punteggio su 100
+  return Math.round(
+    (metrics.duration * 2) + // 20 punti max
+    (metrics.actions * 1) + // 50 punti max
+    (metrics.sections * 4) + // 24 punti max
+    (metrics.searches * 0.6) // 6 punti max
+  );
+}
+
+// ===============================
+// PANNELLO ADMIN - GESTIONE FEEDBACK
+// ===============================
+
+// Variabili per admin panel
+let currentAdminTab = 'feedback';
+let feedbacksList = [];
+let analyticsData = {};
+
+// Mostra tab admin
+function showAdminTab(tabName) {
+  // Nascondi tutti i contenuti tab
+  document.querySelectorAll('.admin-tab-content').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // Rimuovi classe active da tutti i bottoni
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  // Mostra il tab selezionato
+  const targetTab = document.getElementById(`admin-${tabName}`);
+  if (targetTab) {
+    targetTab.classList.add('active');
+  }
+  
+  // Aggiungi classe active al bottone
+  event.target.classList.add('active');
+  
+  currentAdminTab = tabName;
+  
+  // Carica dati per il tab specifico
+  switch(tabName) {
+    case 'feedback':
+      loadFeedbacksAdmin();
+      break;
+    case 'users':
+      loadUsersAdmin();
+      break;
+    case 'analytics':
+      loadAnalyticsAdmin();
+      break;
+    case 'content':
+      loadModerationQueue();
+      break;
+    case 'settings':
+      loadAdminSettings();
+      break;
+  }
+}
+
+// Carica feedback per admin
+async function loadFeedbacksAdmin() {
+  try {
+    // Carica da Firebase
+    const feedbacksSnapshot = await db.collection('feedback')
+      .orderBy('createdAt', 'desc')
+      .get();
+    
+    feedbacksList = [];
+    feedbacksSnapshot.forEach(doc => {
+      feedbacksList.push({ id: doc.id, ...doc.data() });
+    });
+    
+    // Fallback a localStorage se Firebase non disponibile
+    if (feedbacksList.length === 0) {
+      feedbacksList = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+    }
+    
+    displayFeedbacks(feedbacksList);
+    updateFeedbackStats();
+    
+  } catch (error) {
+    console.error('Errore caricamento feedback:', error);
+    // Carica da localStorage
+    feedbacksList = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+    displayFeedbacks(feedbacksList);
+  }
+}
+
+// Visualizza feedback nella lista admin
+function displayFeedbacks(feedbacks) {
+  const feedbacksContainer = document.getElementById('feedbacksList');
+  if (!feedbacksContainer) return;
+  
+  if (feedbacks.length === 0) {
+    feedbacksContainer.innerHTML = `
+      <div class="no-feedback">
+        <h3>📭 Nessun feedback ricevuto</h3>
+        <p>I feedback degli utenti appariranno qui quando disponibili.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  feedbacksContainer.innerHTML = feedbacks.map(feedback => {
+    const date = feedback.timestamp ? new Date(feedback.timestamp).toLocaleString('it-IT') : 'Data non disponibile';
+    const statusClass = getStatusClass(feedback.status || 'new');
+    const ratingStars = feedback.overallRating ? '⭐'.repeat(feedback.overallRating) : '';
+    
+    return `
+      <div class="feedback-item ${statusClass}" data-feedback-id="${feedback.id}">
+        <div class="feedback-header">
+          <div class="feedback-type">
+            ${getFeedbackIcon(feedback.type)} ${getFeedbackTypeName(feedback.type)}
+          </div>
+          <div class="feedback-date">${date}</div>
+          <div class="feedback-status ${statusClass}">
+            ${getStatusName(feedback.status || 'new')}
+          </div>
+        </div>
+        
+        <div class="feedback-content">
+          <div class="feedback-message">
+            <strong>Messaggio:</strong>
+            <p>${feedback.message || 'Nessun messaggio'}</p>
+          </div>
+          
+          ${feedback.overallRating ? `
+            <div class="feedback-rating">
+              <strong>Valutazione:</strong> ${ratingStars} (${feedback.overallRating}/5)
+            </div>
+          ` : ''}
+          
+          ${feedback.contactInfo?.email ? `
+            <div class="feedback-contact">
+              <strong>Contatto:</strong> ${feedback.contactInfo.email}
+              ${feedback.contactInfo.phone ? ` | ${feedback.contactInfo.phone}` : ''}
+            </div>
+          ` : ''}
+          
+          ${feedback.userInfo?.username ? `
+            <div class="feedback-user">
+              <strong>Utente:</strong> ${feedback.userInfo.username}
+            </div>
+          ` : ''}
+          
+          ${feedback.bugDetails?.severity ? `
+            <div class="feedback-bug">
+              <strong>Gravità Bug:</strong> ${getBugSeverityName(feedback.bugDetails.severity)}
+              ${feedback.bugDetails.steps ? `<br><strong>Passi:</strong> ${feedback.bugDetails.steps}` : ''}
+            </div>
+          ` : ''}
+        </div>
+        
+        <div class="feedback-actions">
+          <button onclick="respondToFeedback('${feedback.id}')" class="btn-primary btn-sm">
+            💬 Rispondi
+          </button>
+          <button onclick="markFeedbackResolved('${feedback.id}')" class="btn-success btn-sm">
+            ✅ Risolto
+          </button>
+          <button onclick="deleteFeedback('${feedback.id}')" class="btn-danger btn-sm">
+            🗑️ Elimina
+          </button>
+        </div>
+        
+        ${feedback.adminResponse ? `
+          <div class="admin-response">
+            <strong>🔹 Risposta Admin:</strong>
+            <p>${feedback.adminResponse}</p>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// Utility functions per feedback
+function getFeedbackIcon(type) {
+  const icons = {
+    suggestion: '💡',
+    bug: '🐛',
+    rating: '⭐',
+    feature: '🚀',
+    compliment: '👏'
+  };
+  return icons[type] || '💬';
+}
+
+function getFeedbackTypeName(type) {
+  const names = {
+    suggestion: 'Suggerimento',
+    bug: 'Bug Report',
+    rating: 'Valutazione',
+    feature: 'Richiesta Feature',
+    compliment: 'Complimento'
+  };
+  return names[type] || 'Feedback';
+}
+
+function getStatusClass(status) {
+  const classes = {
+    new: 'status-new',
+    pending: 'status-pending',
+    resolved: 'status-resolved'
+  };
+  return classes[status] || 'status-new';
+}
+
+function getStatusName(status) {
+  const names = {
+    new: 'Nuovo',
+    pending: 'In Attesa',
+    resolved: 'Risolto'
+  };
+  return names[status] || 'Nuovo';
+}
+
+function getBugSeverityName(severity) {
+  const names = {
+    low: '🟢 Bassa',
+    medium: '🟡 Media',
+    high: '🔴 Alta'
+  };
+  return names[severity] || severity;
+}
+
+// Filtra feedback
+function filterFeedbacks() {
+  const filterValue = document.getElementById('feedbackFilter').value;
+  let filteredFeedbacks = feedbacksList;
+  
+  if (filterValue !== 'all') {
+    if (filterValue === 'new' || filterValue === 'pending' || filterValue === 'resolved') {
+      filteredFeedbacks = feedbacksList.filter(f => (f.status || 'new') === filterValue);
+    } else {
+      filteredFeedbacks = feedbacksList.filter(f => f.type === filterValue);
+    }
+  }
+  
+  displayFeedbacks(filteredFeedbacks);
+}
+
+// Rispondi a feedback
+async function respondToFeedback(feedbackId) {
+  const response = prompt('Inserisci la tua risposta:');
+  if (!response) return;
+  
+  try {
+    // Aggiorna in Firebase
+    await db.collection('feedback').doc(feedbackId).update({
+      adminResponse: response,
+      status: 'resolved',
+      respondedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Aggiorna locale
+    const feedback = feedbacksList.find(f => f.id === feedbackId);
+    if (feedback) {
+      feedback.adminResponse = response;
+      feedback.status = 'resolved';
+    }
+    
+    // Invia email se ha contatti
+    if (feedback?.contactInfo?.email && feedback.contactInfo.consent) {
+      await sendFeedbackResponse(feedback, response);
+    }
+    
+    showToast('Risposta inviata con successo!', 'success');
+    loadFeedbacksAdmin();
+    
+  } catch (error) {
+    console.error('Errore invio risposta:', error);
+    showToast('Errore durante l\'invio della risposta', 'error');
+  }
+}
+
+// Marca feedback come risolto
+async function markFeedbackResolved(feedbackId) {
+  try {
+    await db.collection('feedback').doc(feedbackId).update({
+      status: 'resolved',
+      resolvedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    const feedback = feedbacksList.find(f => f.id === feedbackId);
+    if (feedback) {
+      feedback.status = 'resolved';
+    }
+    
+    showToast('Feedback marcato come risolto', 'success');
+    loadFeedbacksAdmin();
+    
+  } catch (error) {
+    console.error('Errore aggiornamento status:', error);
+    showToast('Errore durante l\'aggiornamento', 'error');
+  }
+}
+
+// Elimina feedback
+async function deleteFeedback(feedbackId) {
+  if (!confirm('Sei sicuro di voler eliminare questo feedback?')) return;
+  
+  try {
+    await db.collection('feedback').doc(feedbackId).delete();
+    
+    feedbacksList = feedbacksList.filter(f => f.id !== feedbackId);
+    
+    showToast('Feedback eliminato', 'success');
+    loadFeedbacksAdmin();
+    
+  } catch (error) {
+    console.error('Errore eliminazione feedback:', error);
+    showToast('Errore durante l\'eliminazione', 'error');
+  }
+}
+
+// Invia risposta email al feedback
+async function sendFeedbackResponse(feedback, response) {
+  if (typeof emailjs === 'undefined') return;
+  
+  try {
+    const templateParams = {
+      user_name: feedback.userInfo?.username || 'Utente',
+      user_email: feedback.contactInfo.email,
+      original_message: feedback.message,
+      admin_response: response,
+      feedback_type: getFeedbackTypeName(feedback.type)
+    };
+    
+    await emailjs.send(
+      EMAIL_CONFIG.SERVICE_ID,
+      'template_feedback_response',
+      templateParams
+    );
+    
+    console.log('Email risposta feedback inviata');
+  } catch (error) {
+    console.error('Errore invio email risposta:', error);
+  }
+}
+
+// Aggiorna statistiche feedback
+function updateFeedbackStats() {
+  const totalFeedbacks = feedbacksList.length;
+  const newFeedbacks = feedbacksList.filter(f => (f.status || 'new') === 'new').length;
+  
+  document.getElementById('totalFeedbacks').textContent = totalFeedbacks;
+  
+  // Aggiorna badge se ci sono nuovi feedback
+  if (newFeedbacks > 0) {
+    document.querySelector('#admin-feedback .tab-button').innerHTML = 
+      `💬 Gestione Feedback <span class="badge">${newFeedbacks}</span>`;
+  }
+}
+
+// Carica utenti per admin
+function loadUsersAdmin() {
+  const usersList = JSON.parse(localStorage.getItem('users') || '[]');
+  const activeUsers = usersList.filter(u => u.lastLogin && 
+    (Date.now() - new Date(u.lastLogin).getTime()) < 7 * 24 * 60 * 60 * 1000
+  );
+  
+  document.getElementById('activeUsers').textContent = activeUsers.length;
+  document.getElementById('totalUsers').textContent = usersList.length;
+  
+  const today = new Date().toDateString();
+  const newToday = usersList.filter(u => 
+    u.dataRegistrazione && new Date(u.dataRegistrazione).toDateString() === today
+  ).length;
+  
+  document.getElementById('newUsersToday').textContent = newToday;
+}
+
+// Carica analytics per admin
+function loadAnalyticsAdmin() {
+  const analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
+  const sessions = JSON.parse(localStorage.getItem('user_sessions') || '[]');
+  
+  // Sezioni più visitate
+  const sectionCounts = {};
+  analytics.filter(a => a.action === 'section_change').forEach(a => {
+    sectionCounts[a.data?.to] = (sectionCounts[a.data?.to] || 0) + 1;
+  });
+  
+  const topSections = Object.entries(sectionCounts)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5);
+  
+  document.getElementById('topSections').innerHTML = topSections
+    .map(([section, count]) => `<div>${section}: ${count} visite</div>`)
+    .join('');
+  
+  // Ricerche popolari
+  const searches = analytics.filter(a => a.action === 'search_query');
+  const searchCounts = {};
+  searches.forEach(s => {
+    const query = s.data?.query;
+    if (query) searchCounts[query] = (searchCounts[query] || 0) + 1;
+  });
+  
+  const topSearches = Object.entries(searchCounts)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5);
+  
+  document.getElementById('topSearches').innerHTML = topSearches.length > 0 
+    ? topSearches.map(([query, count]) => `<div>${query}: ${count} ricerche</div>`).join('')
+    : '<div>Nessuna ricerca registrata</div>';
+  
+  // Tempo medio sessione
+  if (sessions.length > 0) {
+    const avgDuration = sessions.reduce((acc, s) => acc + (s.totalDuration || 0), 0) / sessions.length;
+    document.getElementById('avgSessionTime').innerHTML = 
+      `<div>${Math.round(avgDuration / 1000 / 60)} minuti</div>`;
+  }
+}
+
+// Esporta feedback
+function exportFeedbacks() {
+  const data = {
+    exported_at: new Date().toISOString(),
+    total_feedbacks: feedbacksList.length,
+    feedbacks: feedbacksList
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: 'application/json'
+  });
+  
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ti-presto-feedbacks-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showToast('📊 Feedback esportati con successo!', 'success');
+}
+
+// Richiedi permesso notifiche
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    // Aspetta un po' prima di chiedere il permesso per non essere invadenti
+    setTimeout(() => {
+      Notification.requestPermission().then(permission => {
+        console.log('Permesso notifiche:', permission);
+        if (permission === 'granted') {
+          showToast('🔔 Notifiche abilitate! Ti avviseremo per aggiornamenti importanti.', 'success');
+        }
+      });
+    }, 10000); // Dopo 10 secondi
+  }
+}
+
+// ===============================
+// PWA - PROGRESSIVE WEB APP
+// ===============================
+
+// Variabili PWA
+let deferredPrompt;
+let isInstalled = false;
+
+// Registra Service Worker
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('🔴⚪ Ti Presto SW: Registered successfully', registration.scope);
+          
+          // Controlla aggiornamenti
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showUpdateNotification();
+              }
+            });
+          });
+          
+        })
+        .catch((error) => {
+          console.error('🔴⚪ Ti Presto SW: Registration failed', error);
+        });
+    });
+  }
+}
+
+// Mostra notifica di aggiornamento disponibile
+function showUpdateNotification() {
+  const updateToast = document.createElement('div');
+  updateToast.className = 'update-toast';
+  updateToast.innerHTML = `
+    <div class="update-content">
+      <span>🚀 Nuova versione disponibile!</span>
+      <button onclick="updateApp()" class="update-btn">Aggiorna</button>
+      <button onclick="this.parentElement.parentElement.remove()" class="close-btn">×</button>
+    </div>
+  `;
+  
+  updateToast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #002147 0%, #c8102e 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 10000;
+    max-width: 300px;
+  `;
+  
+  document.body.appendChild(updateToast);
+}
+
+// Aggiorna app
+function updateApp() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then((registration) => {
+      if (registration && registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        window.location.reload();
+      }
+    });
+  }
+}
+
+// Gestisci installazione PWA
+window.addEventListener('beforeinstallprompt', (event) => {
+  console.log('🔴⚪ Ti Presto PWA: Install prompt triggered');
+  
+  // Previeni il prompt automatico
+  event.preventDefault();
+  deferredPrompt = event;
+  
+  // Mostra il pulsante di installazione
+  showInstallButton();
+});
+
+// Mostra pulsante installazione
+function showInstallButton() {
+  // Controlla se è già installato
+  if (window.matchMedia('(display-mode: standalone)').matches || isInstalled) {
+    return;
+  }
+  
+  const installButton = document.createElement('button');
+  installButton.id = 'installButton';
+  installButton.innerHTML = '📱 Installa App';
+  installButton.className = 'install-button';
+  installButton.onclick = installApp;
+  
+  installButton.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+    cursor: pointer;
+    z-index: 9999;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    animation: installPulse 2s infinite;
+  `;
+  
+  // Aggiungi animazione CSS
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes installPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); }
+      50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6); }
+    }
+    .install-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
+    }
+  `;
+  document.head.appendChild(style);
+  
+  document.body.appendChild(installButton);
+  
+  // Nascondi dopo 10 secondi se non cliccato
+  setTimeout(() => {
+    if (document.getElementById('installButton')) {
+      installButton.style.opacity = '0.7';
+    }
+  }, 10000);
+}
+
+// Installa app
+async function installApp() {
+  if (!deferredPrompt) {
+    showToast('❌ Installazione non disponibile al momento', 'error');
+    return;
+  }
+  
+  const installButton = document.getElementById('installButton');
+  if (installButton) {
+    installButton.style.display = 'none';
+  }
+  
+  // Mostra il prompt di installazione
+  deferredPrompt.prompt();
+  
+  // Aspetta la risposta dell'utente
+  const { outcome } = await deferredPrompt.userChoice;
+  
+  if (outcome === 'accepted') {
+    console.log('🔴⚪ Ti Presto PWA: User accepted installation');
+    showToast('🎉 App installata con successo! Controlla la home screen.', 'success');
+    trackUserAction('pwa_installed', { method: 'browser_prompt' });
+  } else {
+    console.log('🔴⚪ Ti Presto PWA: User dismissed installation');
+    showToast('💡 Puoi sempre installare l\'app successivamente dal menu browser', 'info');
+  }
+  
+  // Reset del prompt
+  deferredPrompt = null;
+}
+
+// Controlla se è già installato
+window.addEventListener('appinstalled', (event) => {
+  console.log('🔴⚪ Ti Presto PWA: App installed successfully');
+  isInstalled = true;
+  
+  // Nascondi pulsante installazione
+  const installButton = document.getElementById('installButton');
+  if (installButton) {
+    installButton.remove();
+  }
+  
+  showToast('✅ Ti Presto è ora installato come app!', 'success');
+  trackUserAction('pwa_installation_completed');
+});
+
+// Rileva se lanciato come PWA
+function detectPWAMode() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isMobileSafari = isIOS && navigator.standalone;
+  
+  if (isStandalone || isMobileSafari) {
+    console.log('🔴⚪ Ti Presto PWA: Running in standalone mode');
+    document.body.classList.add('pwa-mode');
+    trackUserAction('pwa_launched', { mode: 'standalone' });
+  }
+}
+
+// Gestisci condivisione nativa
+async function shareContent(title, text, url) {
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: title || 'Ti Presto - Genoa CFC 1893',
+        text: text || 'Scopri la piattaforma per lo scambio abbonamenti Genoa!',
+        url: url || window.location.href
+      });
+      
+      trackUserAction('content_shared', { method: 'native_share' });
+      return true;
+    } catch (error) {
+      console.error('Error sharing:', error);
+      return false;
+    }
+  }
+  return false;
+}
+
+// Test installazione PWA
+function testPWAInstallation() {
+  console.log('🔴⚪ Ti Presto PWA: Testing installation capabilities...');
+  
+  const tests = {
+    serviceWorkerSupport: 'serviceWorker' in navigator,
+    manifestLink: !!document.querySelector('link[rel="manifest"]'),
+    httpsProtocol: location.protocol === 'https:' || location.hostname === 'localhost',
+    installPromptSupport: 'onbeforeinstallprompt' in window,
+    notificationSupport: 'Notification' in window,
+    isInstalled: window.matchMedia('(display-mode: standalone)').matches,
+    shareAPISupport: 'share' in navigator
+  };
+  
+  console.table(tests);
+  
+  // Mostra risultati in toast
+  const passedTests = Object.values(tests).filter(Boolean).length;
+  const totalTests = Object.keys(tests).length;
+  
+  let message, type;
+  if (passedTests === totalTests) {
+    message = `✅ PWA completamente supportato (${passedTests}/${totalTests})`;
+    type = 'success';
+  } else if (passedTests >= totalTests - 2) {
+    message = `⚠️ PWA parzialmente supportato (${passedTests}/${totalTests})`;
+    type = 'warning';
+  } else {
+    message = `❌ PWA limitato su questo dispositivo (${passedTests}/${totalTests})`;
+    type = 'error';
+  }
+  
+  showToast(message, type);
+  
+  return tests;
+}
+
+// Inizializza il sistema feedback quando la pagina è caricata
+document.addEventListener('DOMContentLoaded', function() {
+  // Aspetta che tutti gli script siano caricati
+  setTimeout(() => {
+    initializeFeedbackSystem();
+    initializeBehavioralAnalytics();
+    
+    // Inizializza PWA
+    registerServiceWorker();
+    detectPWAMode();
+    
+    // Carica admin se necessario
+    if (currentUser && (currentUser.username === 'admin' || currentUser.isAdmin)) {
+      document.getElementById('adminBtn').style.display = 'inline-block';
+    }
+    
+    // Richiedi permesso notifiche (solo per utenti normali, non admin)
+    if (!currentUser || currentUser.username !== 'admin') {
+      requestNotificationPermission();
+    }
+  }, 1000);
+});
+
+// Esponi funzione di test per la console
+window.testPWAInstallation = testPWAInstallation;
+window.installApp = installApp;
+window.shareContent = shareContent;
+
+// ===============================
+// MOBILE NAVIGATION SYSTEM
+// ===============================
+
+// Mobile menu toggle functionality
+function initializeMobileMenu() {
+  const mobileToggle = document.querySelector('.mobile-menu-toggle');
+  const mainNav = document.querySelector('.main-nav');
+  const body = document.body;
+  
+  // Create overlay if not exists
+  let overlay = document.querySelector('.nav-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'nav-overlay';
+    body.appendChild(overlay);
+  }
+  
+  if (mobileToggle && mainNav) {
+    // Toggle menu
+    mobileToggle.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleMobileMenu();
+    });
+    
+    // Close menu when clicking overlay
+    overlay.addEventListener('click', function() {
+      closeMobileMenu();
+    });
+    
+    // Close menu when clicking nav links
+    const navButtons = mainNav.querySelectorAll('button');
+    navButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        closeMobileMenu();
+      });
+    });
+    
+    // Close menu on escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && mainNav.classList.contains('mobile-open')) {
+        closeMobileMenu();
+      }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+      if (window.innerWidth > 768 && mainNav.classList.contains('mobile-open')) {
+        closeMobileMenu();
+      }
+    });
+  }
+}
+
+function toggleMobileMenu() {
+  const mobileToggle = document.querySelector('.mobile-menu-toggle');
+  const mainNav = document.querySelector('.main-nav');
+  const overlay = document.querySelector('.nav-overlay');
+  const body = document.body;
+  
+  if (mainNav.classList.contains('mobile-open')) {
+    closeMobileMenu();
+  } else {
+    openMobileMenu();
+  }
+}
+
+function openMobileMenu() {
+  const mobileToggle = document.querySelector('.mobile-menu-toggle');
+  const mainNav = document.querySelector('.main-nav');
+  const overlay = document.querySelector('.nav-overlay');
+  const body = document.body;
+  
+  mainNav.classList.add('mobile-open');
+  mobileToggle.classList.add('active');
+  overlay.classList.add('active');
+  body.style.overflow = 'hidden'; // Prevent scrolling
+  
+  // Add accessibility
+  mainNav.setAttribute('aria-expanded', 'true');
+  mobileToggle.setAttribute('aria-expanded', 'true');
+  
+  // Focus first menu item
+  const firstButton = mainNav.querySelector('button');
+  if (firstButton) {
+    setTimeout(() => firstButton.focus(), 300);
+  }
+}
+
+function closeMobileMenu() {
+  const mobileToggle = document.querySelector('.mobile-menu-toggle');
+  const mainNav = document.querySelector('.main-nav');
+  const overlay = document.querySelector('.nav-overlay');
+  const body = document.body;
+  
+  mainNav.classList.remove('mobile-open');
+  mobileToggle.classList.remove('active');
+  overlay.classList.remove('active');
+  body.style.overflow = ''; // Restore scrolling
+  
+  // Update accessibility
+  mainNav.setAttribute('aria-expanded', 'false');
+  mobileToggle.setAttribute('aria-expanded', 'false');
+}
+
+// Mobile-specific improvements
+function initializeMobileOptimizations() {
+  // Prevent zoom on input fields (iOS)
+  const inputs = document.querySelectorAll('input, select, textarea');
+  inputs.forEach(input => {
+    if (input.type !== 'range') {
+      input.addEventListener('focus', function() {
+        if (window.innerWidth <= 768) {
+          // Temporarily prevent zoom
+          const viewport = document.querySelector('meta[name=viewport]');
+          if (viewport) {
+            const content = viewport.getAttribute('content');
+            viewport.setAttribute('content', content + ', user-scalable=no');
+            
+            setTimeout(() => {
+              viewport.setAttribute('content', content);
+            }, 1000);
+          }
+        }
+      });
+    }
+  });
+  
+  // Touch feedback for buttons
+  const buttons = document.querySelectorAll('button, .btn, a[role="button"]');
+  buttons.forEach(button => {
+    button.addEventListener('touchstart', function() {
+      this.style.transform = 'scale(0.98)';
+    });
+    
+    button.addEventListener('touchend', function() {
+      this.style.transform = '';
+    });
+    
+    button.addEventListener('touchcancel', function() {
+      this.style.transform = '';
+    });
+  });
+  
+  // Improve scrolling performance
+  if (window.innerWidth <= 768) {
+    document.body.style.webkitOverflowScrolling = 'touch';
+  }
+  
+  // Handle orientation change
+  window.addEventListener('orientationchange', function() {
+    setTimeout(() => {
+      // Recalculate viewport height for mobile browsers
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+      
+      // Close mobile menu if open
+      if (document.querySelector('.main-nav.mobile-open')) {
+        closeMobileMenu();
+      }
+    }, 500);
+  });
+  
+  // Set initial viewport height
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+// Modal improvements for mobile
+function initializeMobileModals() {
+  const modals = document.querySelectorAll('.modal');
+  
+  modals.forEach(modal => {
+    const modalContent = modal.querySelector('.modal-content');
+    
+    if (modalContent) {
+      // Prevent background scroll when modal is open
+      modal.addEventListener('show', function() {
+        if (window.innerWidth <= 768) {
+          document.body.style.overflow = 'hidden';
+          document.body.style.position = 'fixed';
+          document.body.style.width = '100%';
+        }
+      });
+      
+      modal.addEventListener('hide', function() {
+        if (window.innerWidth <= 768) {
+          document.body.style.overflow = '';
+          document.body.style.position = '';
+          document.body.style.width = '';
+        }
+      });
+      
+      // Add swipe to close for mobile
+      if (window.innerWidth <= 768) {
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+        
+        modalContent.addEventListener('touchstart', function(e) {
+          startY = e.touches[0].clientY;
+          isDragging = true;
+        });
+        
+        modalContent.addEventListener('touchmove', function(e) {
+          if (!isDragging) return;
+          
+          currentY = e.touches[0].clientY;
+          const diffY = currentY - startY;
+          
+          if (diffY > 0) {
+            modalContent.style.transform = `translateY(${Math.min(diffY, 100)}px)`;
+          }
+        });
+        
+        modalContent.addEventListener('touchend', function(e) {
+          if (!isDragging) return;
+          
+          const diffY = currentY - startY;
+          
+          if (diffY > 50) {
+            // Close modal if swiped down enough
+            const closeBtn = modal.querySelector('.close');
+            if (closeBtn) {
+              closeBtn.click();
+            }
+          } else {
+            // Snap back
+            modalContent.style.transform = '';
+          }
+          
+          isDragging = false;
+        });
+      }
+    }
+  });
+}
+
+// Initialize mobile features
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize mobile navigation
+  initializeMobileMenu();
+  
+  // Initialize mobile optimizations
+  initializeMobileOptimizations();
+  
+  // Initialize mobile modals
+  initializeMobileModals();
+  
+  console.log('🔴⚪ Mobile optimizations initialized for Ti Presto Genoa 1893');
+});

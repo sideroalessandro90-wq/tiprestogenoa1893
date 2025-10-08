@@ -1,0 +1,97 @@
+{
+  "name": "Ti Presto - L'Abbonamento Genoa CFC 1893",
+  "short_name": "Ti Presto Genoa",
+  "description": "Piattaforma ufficiale per lo scambio di abbonamenti del Genoa CFC 1893. Vendi, compra e scambia il tuo abbonamento con altri tifosi rossoblù.",
+  "version": "2.0.1",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#002147",
+  "background_color": "#f2f2f2",
+  "categories": ["sports", "social", "lifestyle"],
+  "lang": "it",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "logo-ufficiale-genoa-cfc.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo-ufficiale-genoa-cfc.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "logo-ufficiale-genoa-cfc.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Homepage Ti Presto Genoa"
+    },
+    {
+      "src": "logo-ufficiale-genoa-cfc.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "Mobile Ti Presto Genoa"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Cerca Abbonamenti",
+      "short_name": "Cerca",
+      "description": "Trova abbonamenti disponibili",
+      "url": "/?section=home",
+      "icons": [
+        {
+          "src": "logo-ufficiale-genoa-cfc.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Vendi Abbonamento",
+      "short_name": "Vendi",
+      "description": "Metti in vendita il tuo abbonamento",
+      "url": "/?section=booking",
+      "icons": [
+        {
+          "src": "logo-ufficiale-genoa-cfc.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Le Tue Trattative",
+      "short_name": "Trattative",
+      "description": "Gestisci le tue trattative",
+      "url": "/?section=mySubscription",
+      "icons": [
+        {
+          "src": "logo-ufficiale-genoa-cfc.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "protocol_handlers": [
+    {
+      "protocol": "web+tipresto",
+      "url": "/?handler=%s"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
+}
