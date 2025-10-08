@@ -1541,7 +1541,10 @@ function apriModalConfermaInteresse(abbonId) {
   const btnInteressato = document.getElementById('btnSonoInteressato');
   
   btnInteressato.onclick = () => {
-    confermaInteresse(abbonId, 'interessato');
+    // Salva ID abbonamento per il successivo invio
+    window.currentAbbonamentoInteresse = abbonId;
+    closeConfermaInteresseModal();
+    apriModalDatiPagamento(abbonId);
   };
   
   // Mostra modal
@@ -1621,6 +1624,155 @@ function closeConfermaInteresseModal() {
   if (modal) {
     modal.style.display = 'none';
     document.body.classList.remove('modal-open');
+  }
+}
+
+// 💳 Apri modal dati pagamento
+function apriModalDatiPagamento(abbonId) {
+  const abbon = abbonamenti.find(a => a.id === abbonId);
+  if (!abbon) {
+    showToast('❌ Abbonamento non trovato', 'error');
+    return;
+  }
+  
+  // Pre-compila i dati dell'utente se disponibili
+  if (loggedInUser.email) {
+    document.getElementById('emailPagamento').value = loggedInUser.email;
+  }
+  if (loggedInUser.telefono) {
+    document.getElementById('telefonoPagamento').value = loggedInUser.telefono;
+  }
+  
+  // Setup change listener per PayPal
+  const metodoPagamento = document.getElementById('metodoPagamento');
+  const paypalGroup = document.getElementById('paypalGroup');
+  
+  metodoPagamento.onchange = function() {
+    if (this.value === 'paypal') {
+      paypalGroup.style.display = 'block';
+      paypalGroup.classList.add('show');
+    } else {
+      paypalGroup.style.display = 'none';
+      paypalGroup.classList.remove('show');
+    }
+  };
+  
+  // Reset form
+  document.getElementById('datiPagamentoForm').reset();
+  if (loggedInUser.email) document.getElementById('emailPagamento').value = loggedInUser.email;
+  if (loggedInUser.telefono) document.getElementById('telefonoPagamento').value = loggedInUser.telefono;
+  
+  // Mostra modal
+  showModal('datiPagamentoModal');
+}
+
+// Helper per label metodi pagamento
+function getMetodoPagamentoLabel(metodo) {
+  const labels = {
+    'contanti': '💵 Contanti',
+    'paypal': '💙 PayPal',
+    'bonifico': '🏦 Bonifico bancario',
+    'satispay': '💚 Satispay',
+    'altro': '🔄 Da concordare'
+  };
+  return labels[metodo] || metodo;
+}
+
+// 💳 Invia richiesta interesse con dati pagamento
+async function inviaRichiestaConDatiPagamento() {
+  const abbonId = window.currentAbbonamentoInteresse;
+  
+  if (!abbonId) {
+    showToast('❌ Errore: abbonamento non identificato', 'error');
+    return;
+  }
+  
+  // Validazione form
+  const email = document.getElementById('emailPagamento').value.trim();
+  const telefono = document.getElementById('telefonoPagamento').value.trim();
+  const metodoPagamento = document.getElementById('metodoPagamento').value;
+  const paypalEmail = document.getElementById('paypalEmail').value.trim();
+  const messaggio = document.getElementById('messaggioAcquirente').value.trim();
+  
+  if (!email || !telefono) {
+    showToast('❌ Email e telefono sono obbligatori', 'error');
+    return;
+  }
+  
+  // Validazione email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showToast('❌ Formato email non valido', 'error');
+    return;
+  }
+  
+  // Validazione telefono
+  const phoneRegex = /^[\+]?[\d\s\-\(\)]{8,}$/;
+  if (!phoneRegex.test(telefono)) {
+    showToast('❌ Formato telefono non valido', 'error');
+    return;
+  }
+  
+  // Validazione PayPal se selezionato
+  if (metodoPagamento === 'paypal' && paypalEmail && !emailRegex.test(paypalEmail)) {
+    showToast('❌ Formato email PayPal non valido', 'error');
+    return;
+  }
+  
+  try {
+    const abbon = abbonamenti.find(a => a.id === abbonId);
+    
+    // Controlla se esiste già una richiesta
+    const richiesteSnapshot = await db.collection('richiestaInteresse')
+      .where('abbonamentoId', '==', abbonId)
+      .where('buyerId', '==', loggedInUser.uid)
+      .get();
+    
+    if (!richiesteSnapshot.empty) {
+      showToast('❌ Hai già inviato una richiesta per questo abbonamento', 'error');
+      return;
+    }
+    
+    // Crea la richiesta con dati pagamento
+    const richiestaData = {
+      abbonamentoId: abbonId,
+      venditorId: abbon.utente,
+      buyerId: loggedInUser.uid,
+      buyerName: getUserDisplayName(loggedInUser),
+      buyerEmail: email,
+      buyerTelefono: telefono,
+      metodoPagamento: metodoPagamento,
+      paypalEmail: paypalEmail || null,
+      messaggio: messaggio || null,
+      tipoInteresse: 'interessato',
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      stato: 'pending'
+    };
+    
+    // Salva su Firebase
+    await db.collection('richiestaInteresse').add(richiestaData);
+    
+    closeModal('datiPagamentoModal');
+    showToast('✅ Richiesta inviata con dati di pagamento!', 'success');
+    
+    // Analytics
+    addAnalyticsEvent('richiesta_interesse_inviata', {
+      abbonamentoId: abbonId,
+      metodoPagamento: metodoPagamento,
+      hasPayPal: !!paypalEmail,
+      hasMessaggio: !!messaggio
+    });
+    
+    // Refresh UI
+    loadHomeListings();
+    loadMySubscription();
+    
+    // Reset
+    window.currentAbbonamentoInteresse = null;
+    
+  } catch (error) {
+    console.error('❌ Errore invio richiesta:', error);
+    showToast('❌ Errore durante l\'invio della richiesta', 'error');
   }
 }
 
@@ -2434,6 +2586,17 @@ async function loadMySubscription() {
               <span class="richiesta-tipo">è interessato</span>
             </div>
             <p class="richiesta-data">📅 ${new Date(richiesta.timestamp.toDate()).toLocaleDateString('it-IT')}</p>
+            
+            <div class="dati-pagamento-richiesta">
+              <h5>💳 Dati Pagamento Acquirente:</h5>
+              <div class="pagamento-details">
+                <p><strong>📧 Email:</strong> <a href="mailto:${richiesta.buyerEmail}">${richiesta.buyerEmail}</a></p>
+                <p><strong>📞 Telefono:</strong> <a href="tel:${richiesta.buyerTelefono}">${richiesta.buyerTelefono}</a></p>
+                <p><strong>💳 Metodo pagamento:</strong> ${getMetodoPagamentoLabel(richiesta.metodoPagamento)}</p>
+                ${richiesta.paypalEmail ? `<p><strong>💙 PayPal:</strong> ${richiesta.paypalEmail}</p>` : ''}
+                ${richiesta.messaggio ? `<div class="messaggio-acquirente"><strong>💬 Messaggio:</strong><br><em>"${richiesta.messaggio}"</em></div>` : ''}
+              </div>
+            </div>
           `;
           
           // Pulsanti azione per richieste

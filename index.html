@@ -970,6 +970,90 @@
   </div>
 </div>
 
+<!-- Dati Pagamento Modal per Acquisto Abbonamento -->
+<div class="modal" id="datiPagamentoModal">
+  <div class="modal-content pagamento-content">
+    <div class="modal-header">
+      <h2 class="modal-title">💳 Dati per il Pagamento</h2>
+      <span class="close" onclick="closeModal('datiPagamentoModal')">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="pagamento-info">
+        <p><strong>📋 Informazioni necessarie per la trattativa</strong></p>
+        <p>Il venditore avrà bisogno dei tuoi dati di contatto per organizzare l'incontro e il pagamento dell'abbonamento.</p>
+        
+        <form id="datiPagamentoForm" class="pagamento-form">
+          <div class="form-group">
+            <label for="emailPagamento">
+              <span class="label-icon">📧</span>
+              Email di contatto *
+            </label>
+            <input type="email" id="emailPagamento" required placeholder="la-tua-email@esempio.com">
+          </div>
+          
+          <div class="form-group">
+            <label for="telefonoPagamento">
+              <span class="label-icon">📞</span>
+              Numero di telefono *
+            </label>
+            <input type="tel" id="telefonoPagamento" required placeholder="+39 123 456 7890">
+          </div>
+          
+          <div class="form-group">
+            <label for="metodoPagamento">
+              <span class="label-icon">💳</span>
+              Metodo di pagamento preferito
+            </label>
+            <select id="metodoPagamento">
+              <option value="contanti">💵 Contanti</option>
+              <option value="paypal">💙 PayPal</option>
+              <option value="bonifico">🏦 Bonifico bancario</option>
+              <option value="satispay">💚 Satispay</option>
+              <option value="altro">🔄 Da concordare</option>
+            </select>
+          </div>
+          
+          <div class="form-group" id="paypalGroup" style="display:none;">
+            <label for="paypalEmail">
+              <span class="label-icon">💙</span>
+              Email PayPal (opzionale)
+            </label>
+            <input type="email" id="paypalEmail" placeholder="paypal@esempio.com">
+            <small class="form-help">Se hai PayPal, inserisci l'email per facilitare il pagamento</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="messaggioAcquirente">
+              <span class="label-icon">💬</span>
+              Messaggio per il venditore (opzionale)
+            </label>
+            <textarea id="messaggioAcquirente" rows="3" placeholder="Es: Sono un tifoso del Genoa da sempre, mi piacerebbe acquistare il tuo abbonamento..."></textarea>
+          </div>
+        </form>
+        
+        <div class="privacy-payment-notice">
+          <p><strong>🔒 Privacy e Sicurezza:</strong></p>
+          <ul>
+            <li>I tuoi dati saranno condivisi solo con il venditore dell'abbonamento</li>
+            <li>Organizzate sempre l'incontro in luoghi pubblici e sicuri</li>
+            <li>Il pagamento avviene direttamente tra voi - Ti Presto non gestisce transazioni</li>
+            <li>In caso di problemi, potete contattare il supporto</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" onclick="closeModal('datiPagamentoModal')">
+        ❌ Annulla
+      </button>
+      <button type="button" class="btn-primary" onclick="inviaRichiestaConDatiPagamento()">
+        💳 Invia Richiesta di Interesse
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Telefono Modal per Vendita Abbonamento -->
 <div class="modal" id="telefonoModal">
   <div class="modal-content telefono-content">
