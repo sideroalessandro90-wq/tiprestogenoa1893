@@ -2009,6 +2009,44 @@ async function rifiutaRichiestaFirebase(richiestaId) {
   }
 }
 
+// 🆕 Completa vendita (versione Firebase) - Venditore conferma pagamento ricevuto
+async function completaVenditaFirebase(richiestaId, abbonamentoId) {
+  try {
+    console.log('💰 Completando vendita:', { richiestaId, abbonamentoId });
+    
+    // Aggiorna stato richiesta a completed
+    await db.collection('richiestaInteresse').doc(richiestaId).update({
+      stato: 'completed',
+      dataCompletamento: new Date(),
+      completatoDa: 'venditore'
+    });
+    
+    // Rimuovi abbonamento dalla vendita (venduto)
+    await db.collection('abbonamenti').doc(abbonamentoId).update({
+      disponibile: false,
+      venduto: true,
+      dataVendita: new Date()
+    });
+    
+    // Aggiorna array locale
+    const localIndex = abbonamenti.findIndex(a => a.id === abbonamentoId);
+    if (localIndex !== -1) {
+      abbonamenti[localIndex].disponibile = false;
+      abbonamenti[localIndex].venduto = true;
+    }
+    
+    showToast('🎉 Vendita completata con successo! L\'abbonamento è stato rimosso dalla vendita', 'success');
+    
+    // Refresh UI
+    loadMySubscription();
+    loadAvailableMatches();
+    
+  } catch (error) {
+    console.error('❌ Errore nel completare la vendita:', error);
+    showToast('❌ Errore nel completare la vendita', 'error');
+  }
+}
+
 // 🔥 Listener real-time per messaggi chat
 function startChatRealTimeListener(abbonId) {
   // Ferma listener precedente se esiste
@@ -2279,7 +2317,7 @@ function closeChatModal() {
 // --- STORICO PRENOTAZIONI MODERNO ---
 let currentFilter = 'all';
 
-function loadStorico() {
+async function loadStorico() {
   const container = document.getElementById('storicoList');
   if (!container) return;
 
@@ -2295,51 +2333,91 @@ function loadStorico() {
     return;
   }
 
-  const meName = loggedInUser.uid;
-
-  // Partecipazioni dove sono venditore o acquirente
-  const mine = (abbonamenti || []).filter(a => {
-    const isSeller = (a.utente && a.utente === meName);
-    const isBuyer  = (a.buyerName && a.buyerName === meName);
-    return isSeller || isBuyer;
-  });
-
-  // Solo trattative concluse: venduto/confermato da entrambe le parti
-  const concluded = mine.filter(a => {
-    const stato = (a.stato || '').toLowerCase();
-    const bothConfirmed = a.confermato === true || a.sellerConfirmed === true && a.buyerConfirmed === true;
-    const sold = stato === 'venduto' || stato === 'confermato';
-    const notAvailableSold = a.disponibile === false;
-    return bothConfirmed || sold || notAvailableSold;
-  });
-
-  // Aggiorna statistiche
-  updateStoricoStats(concluded.length);
-
-  if (concluded.length === 0) {
+  try {
+    console.log('📋 Caricando storico trattative completate per:', loggedInUser.uid);
+    
+    // Carica richieste completate dove sono venditore
+    const richiesteVenditore = await db.collection('richiestaInteresse')
+      .where('venditorId', '==', loggedInUser.uid)
+      .where('stato', '==', 'completed')
+      .get();
+    
+    // Carica richieste completate dove sono acquirente  
+    const richiesteAcquirente = await db.collection('richiestaInteresse')
+      .where('buyerId', '==', loggedInUser.uid)
+      .where('stato', '==', 'completed')
+      .get();
+    
+    let transazioniCompletate = [];
+    
+    // Processa vendite (sono il venditore)
+    richiesteVenditore.forEach(doc => {
+      const richiesta = { id: doc.id, ...doc.data() };
+      const abbon = abbonamenti.find(a => a.id === richiesta.abbonamentoId);
+      if (abbon) {
+        transazioniCompletate.push({
+          ...richiesta,
+          abbonamento: abbon,
+          tipoTransazione: 'vendita',
+          dataCompletamento: richiesta.dataCompletamento?.toDate() || new Date(),
+          prezzo: prezziSettore[abbon.settore] || 0
+        });
+      }
+    });
+    
+    // Processa acquisti (sono l'acquirente)
+    richiesteAcquirente.forEach(doc => {
+      const richiesta = { id: doc.id, ...doc.data() };
+      const abbon = abbonamenti.find(a => a.id === richiesta.abbonamentoId);
+      if (abbon) {
+        transazioniCompletate.push({
+          ...richiesta,
+          abbonamento: abbon,
+          tipoTransazione: 'acquisto',
+          dataCompletamento: richiesta.dataCompletamento?.toDate() || new Date(),
+          prezzo: prezziSettore[abbon.settore] || 0
+        });
+      }
+    });
+    
+    // Ordina per data più recente
+    transazioniCompletate.sort((a, b) => b.dataCompletamento - a.dataCompletamento);
+    
+    // Aggiorna statistiche
+    updateStoricoStats(transazioniCompletate.length);
+    
+    if (transazioniCompletate.length === 0) {
+      container.innerHTML = `
+        <div class="storico-empty">
+          <div class="storico-empty-icon">📋</div>
+          <h3>Nessuna Transazione Completata</h3>
+          <p>Non hai ancora completato nessuna trattativa.<br/>
+          Inizia a vendere o comprare abbonamenti!</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Applica filtro
+    let filteredResults = transazioniCompletate;
+    if (currentFilter === 'vendite') {
+      filteredResults = transazioniCompletate.filter(t => t.tipoTransazione === 'vendita');
+    } else if (currentFilter === 'acquisti') {
+      filteredResults = transazioniCompletate.filter(t => t.tipoTransazione === 'acquisto');
+    }
+    
+    renderStoricoItemsFirebase(filteredResults);
+    
+  } catch (error) {
+    console.error('❌ Errore caricamento storico:', error);
     container.innerHTML = `
       <div class="storico-empty">
-        <div class="storico-empty-icon">📋</div>
-        <h3>Nessuna Transazione</h3>
-        <p>Non hai ancora completato nessuna trattativa.<br/>
-        Inizia a vendere o comprare abbonamenti!</p>
+        <div class="storico-empty-icon">❌</div>
+        <h3>Errore Caricamento</h3>
+        <p>Impossibile caricare lo storico delle transazioni.</p>
       </div>
     `;
-    return;
   }
-
-  // Ordina per data più recente
-  concluded.sort((x,y)=> (y.lastPurchaseAt||y.timestamp||0) - (x.lastPurchaseAt||x.timestamp||0));
-
-  // Applica filtro
-  let filteredResults = concluded;
-  if (currentFilter === 'vendite') {
-    filteredResults = concluded.filter(a => a.utente === meName);
-  } else if (currentFilter === 'acquisti') {
-    filteredResults = concluded.filter(a => a.buyerName === meName);
-  }
-
-  renderStoricoItems(filteredResults, meName);
 }
 
 function renderStoricoItems(transactions, meName) {
@@ -2407,6 +2485,76 @@ function renderStoricoItems(transactions, meName) {
           <span class="info-label">${isVendita ? '👤 Acquirente' : '👤 Venditore'}</span>
           <span class="info-value">${isVendita ? (abbon.buyerName || 'N/D') : (abbon.utente || 'N/D')}</span>
         </div>
+      </div>
+    `;
+    
+    container.appendChild(div);
+  });
+}
+
+// 🆕 Render transazioni Firebase completate
+function renderStoricoItemsFirebase(transazioni) {
+  const container = document.getElementById('storicoList');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  transazioni.forEach(transazione => {
+    const { abbonamento, tipoTransazione, dataCompletamento, prezzo } = transazione;
+    const isVendita = tipoTransazione === 'vendita';
+    
+    const div = document.createElement('div');
+    div.className = `storico-item ${isVendita ? 'vendita' : 'acquisto'}`;
+    
+    // Badge tipo transazione
+    const badgeClass = isVendita ? 'badge-vendita' : 'badge-acquisto';
+    const badgeIcon = isVendita ? '💰' : '🎫';
+    const badgeText = isVendita ? 'VENDUTO' : 'ACQUISTATO';
+    
+    // Nome controparte
+    const controparte = isVendita ? transazione.buyerName : 
+                       (abbonamento.utenteNome ? `${abbonamento.utenteNome} ${abbonamento.utenteCognome || ''}`.trim() : 'Venditore');
+    
+    div.innerHTML = `
+      <div class="storico-header">
+        <div class="match-info">
+          <div class="match-logos">
+            ${abbonamento.matchDesc ? getMatchLogos(abbonamento.matchDesc) : ''}
+          </div>
+          <h4 class="match-title">${abbonamento.matchDesc}</h4>
+        </div>
+        <span class="storico-badge ${badgeClass}">
+          <span class="badge-icon">${badgeIcon}</span>
+          ${badgeText}
+        </span>
+      </div>
+      
+      <div class="storico-details">
+        <div class="info-group">
+          <span class="info-label">🎯 Settore</span>
+          <span class="info-value">${abbonamento.settore}</span>
+        </div>
+        <div class="info-group">
+          <span class="info-label">💰 Prezzo</span>
+          <span class="info-value price-value">€ ${formatPriceWithComma(prezzo)}</span>
+        </div>
+        <div class="info-group">
+          <span class="info-label">📅 Completata il</span>
+          <span class="info-value date-value">${dataCompletamento.toLocaleDateString('it-IT')}</span>
+        </div>
+        <div class="info-group">
+          <span class="info-label">⏰ Ora</span>
+          <span class="info-value date-value">${dataCompletamento.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        <div class="info-group">
+          <span class="info-label">${isVendita ? '👤 Acquirente' : '👤 Venditore'}</span>
+          <span class="info-value">${controparte}</span>
+        </div>
+      </div>
+      
+      <div class="transazione-completata-badge">
+        <span class="completion-icon">✅</span>
+        <span class="completion-text">Transazione completata con successo!</span>
       </div>
     `;
     
@@ -2617,6 +2765,54 @@ async function loadMySubscription() {
           actions.appendChild(btnRifiuta);
           richiestaDiv.appendChild(actions);
           details.appendChild(richiestaDiv);
+        } else if (richiesta && richiesta.stato === 'accepted') {
+          // === STATO ACCEPTED: Contatti condivisi, in attesa pagamento ===
+          const accettataDiv = document.createElement('div');
+          accettataDiv.className = 'richiesta-accettata';
+          accettataDiv.innerHTML = `
+            <div class="richiesta-header">
+              <span class="richiesta-icon">🤝</span>
+              <strong>${richiesta.buyerName}</strong>
+              <span class="richiesta-tipo">- Contatti condivisi</span>
+            </div>
+            <p class="richiesta-data">✅ Accettata il ${new Date(richiesta.dataAccettazione.toDate()).toLocaleDateString('it-IT')}</p>
+            
+            <div class="info-pagamento">
+              <div class="payment-status">
+                <span class="payment-icon">⏳</span>
+                <p><strong>In attesa del pagamento dell'acquirente</strong></p>
+                <p class="payment-note">L'acquirente dovrebbe contattarti per coordinare il pagamento</p>
+              </div>
+            </div>
+            
+            <div class="dati-pagamento-richiesta">
+              <h5>💳 Dati Pagamento Acquirente:</h5>
+              <div class="pagamento-details">
+                <p><strong>📧 Email:</strong> <a href="mailto:${richiesta.buyerEmail}">${richiesta.buyerEmail}</a></p>
+                <p><strong>📞 Telefono:</strong> <a href="tel:${richiesta.buyerTelefono}">${richiesta.buyerTelefono}</a></p>
+                <p><strong>💳 Metodo pagamento:</strong> ${getMetodoPagamentoLabel(richiesta.metodoPagamento)}</p>
+                ${richiesta.paypalEmail ? `<p><strong>💙 PayPal:</strong> ${richiesta.paypalEmail}</p>` : ''}
+                ${richiesta.messaggio ? `<div class="messaggio-acquirente"><strong>💬 Messaggio:</strong><br><em>"${richiesta.messaggio}"</em></div>` : ''}
+              </div>
+            </div>
+          `;
+          
+          // === PULSANTE COMPLETA VENDITA per il venditore ===
+          const venditorActions = document.createElement('div');
+          venditorActions.className = 'row-actions venditor-actions';
+          
+          const btnCompletaVendita = document.createElement('button');
+          btnCompletaVendita.className = 'btn-success btn-completa-vendita';
+          btnCompletaVendita.innerHTML = '<span>✅</span> Ho Ricevuto il Pagamento - Completa Vendita';
+          btnCompletaVendita.onclick = () => {
+            if (confirm('⚠️ CONFERMA VENDITA\n\nHai ricevuto il pagamento da parte dell\'acquirente?\n\nQuesta azione segnerà la transazione come completata e non potrà essere annullata.')) {
+              completaVenditaFirebase(richiesta.id, abbon.id);
+            }
+          };
+          
+          venditorActions.appendChild(btnCompletaVendita);
+          accettataDiv.appendChild(venditorActions);
+          details.appendChild(accettataDiv);
         }
         
         // 🗑️ Pulsante Annulla Abbonamento (sempre presente)
