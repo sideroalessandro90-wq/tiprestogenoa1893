@@ -1342,6 +1342,31 @@
   </div>
 </footer>
 
+<!-- Dati Vendita Modal -->
+<div class="modal" id="datiVenditaModal" style="display:none;">
+  <!-- Contenuto generato dinamicamente da JavaScript -->
+</div>
+
+<!-- Chat Modal -->
+<div class="modal" id="chatModal" style="display:none;">
+  <div class="modal-content chat-modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">💬 Chat Trattativa</h2>
+      <span class="close" onclick="closeChatModal()">×</span>
+    </div>
+    <div class="modal-body">
+      <div id="chatHeader"></div>
+      <div id="chatMessages" class="chat-messages"></div>
+      <div id="chatActions" class="chat-actions">
+        <div class="message-input-group">
+          <input type="text" id="messageInput" placeholder="Scrivi un messaggio..." class="message-input">
+          <button onclick="sendMessage()" class="btn-send-message">📤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Script locali -->
 <script src="toast.js"></script>
 <script src="pw-simple.js"></script>
