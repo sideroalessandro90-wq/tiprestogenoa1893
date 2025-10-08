@@ -5207,11 +5207,8 @@ document.addEventListener('DOMContentLoaded', function() {
     registerServiceWorker();
     detectPWAMode();
     
-    // Carica admin se necessario
-    if (currentUser && (currentUser.username === 'admin' || currentUser.isAdmin || currentUser.email === 'dnagenoa@outlook.it')) {
-      document.getElementById('adminBtn').style.display = 'inline-block';
-      console.log('✅ Admin panel abilitato per:', currentUser.email);
-    }
+    // Admin button sempre visibile, ma controllo accesso nella funzione
+    console.log('Admin button sempre visibile in navigazione');
     
     // Richiedi permesso notifiche (solo per utenti normali, non admin)
     if (!currentUser || (currentUser.username !== 'admin' && currentUser.email !== 'dnagenoa@outlook.it')) {
@@ -5477,3 +5474,20 @@ document.addEventListener('DOMContentLoaded', function() {
   
   console.log('🔴⚪ Mobile optimizations initialized for Ti Presto Genoa 1893');
 });
+
+// Funzione controllo accesso admin
+function checkAdminAccess() {
+  if (!loggedInUser) {
+    alert('Devi effettuare il login per accedere al pannello admin.');
+    toggleModal(true);
+    return;
+  }
+  
+  if (loggedInUser.username === 'admin' || loggedInUser.isAdmin || loggedInUser.email === 'dnagenoa@outlook.it') {
+    showSection('admin');
+    console.log('✅ Accesso admin concesso per:', loggedInUser.email);
+  } else {
+    alert('Non hai i permessi per accedere al pannello amministrativo.');
+    console.log('❌ Accesso admin negato per:', loggedInUser.email);
+  }
+}
