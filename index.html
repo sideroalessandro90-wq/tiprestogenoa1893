@@ -144,6 +144,9 @@
 <header>
   <div aria-label="Data e ora in tempo reale" id="liveDateTime"></div>
   
+  <!-- Connection Status Indicator -->
+  <div class="connection-status online" id="connection-status" title="Stato connessione">🌐 Online</div>
+  
   <!-- Mobile Menu Toggle Button -->
   <button class="mobile-menu-toggle" aria-label="Apri menu di navigazione" aria-expanded="false">
     <span class="hamburger-line"></span>
@@ -519,7 +522,11 @@
     <div class="admin-header">
       <h2>👑 Pannello Amministrazione</h2>
       <p>Gestione completa della piattaforma Ti Presto Genoa 1893</p>
-      <div id="adminBadge" class="admin-badge">AMMINISTRATORE</div>
+      <div class="admin-header-actions">
+        <div id="adminBadge" class="admin-badge">AMMINISTRATORE</div>
+        <button onclick="testFirebaseSystem()" class="test-system-btn" title="Testa integrità sistema Firebase">🧪 Test Sistema</button>
+        <button onclick="debugSystemInfo()" class="debug-info-btn" title="Mostra informazioni debug">🔧 Debug Info</button>
+      </div>
     </div>
     
     <div class="admin-dashboard">

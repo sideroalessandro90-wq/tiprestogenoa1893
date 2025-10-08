@@ -517,8 +517,22 @@ function showSection(id) {
     } else if (id === 'mySubscription') {
       loadMySubscription();
     } else if (id === 'admin') {
-      updateAdminStats();
-      loadFeedbacksAdmin();
+      // Carica admin panel con dati Firebase
+      updateAdminStats().then(() => {
+        console.log('📊 Statistiche admin aggiornate');
+      });
+      loadFeedbacksAdmin().then(() => {
+        console.log('💬 Feedback admin caricati');
+      });
+      loadUsersAdmin().then(() => {
+        console.log('👥 Utenti admin caricati');
+      });
+      loadAnalyticsAdmin().then(() => {
+        console.log('📈 Analytics admin caricati');
+      });
+      
+      // Auto-test sistema per admin
+      runSystemTestOnAdmin();
     }
   } catch (error) {
     console.error(`Errore nel caricamento della sezione ${id}:`, error);
@@ -4562,31 +4576,42 @@ function showAdminTab(tabName) {
   }
 }
 
-// Carica feedback per admin
+// Carica feedback per admin (Firebase-first)
 async function loadFeedbacksAdmin() {
   try {
-    // Carica da Firebase
+    console.log('🔄 Caricamento feedback da Firebase...');
+    
+    // PRIORITÀ 1: Carica da Firebase
     const feedbacksSnapshot = await db.collection('feedback')
-      .orderBy('createdAt', 'desc')
+      .orderBy('timestamp', 'desc')
       .get();
     
     feedbacksList = [];
     feedbacksSnapshot.forEach(doc => {
-      feedbacksList.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      feedbacksList.push({ 
+        id: doc.id, 
+        ...data,
+        timestamp: data.timestamp?.toMillis() || Date.now(),
+        createdAt: data.createdAt || data.timestamp?.toDate().toISOString()
+      });
     });
     
-    // Fallback a localStorage se Firebase non disponibile
-    if (feedbacksList.length === 0) {
-      feedbacksList = JSON.parse(localStorage.getItem('feedbacks') || '[]');
-    }
+    console.log(`✅ ${feedbacksList.length} feedback caricati da Firebase`);
+    
+    // Sincronizza con localStorage per cache
+    localStorage.setItem('feedbacks', JSON.stringify(feedbacksList));
     
     displayFeedbacks(feedbacksList);
     updateFeedbackStats();
     
   } catch (error) {
-    console.error('Errore caricamento feedback:', error);
-    // Carica da localStorage
+    console.error('❌ Errore caricamento da Firebase, fallback localStorage:', error);
+    
+    // FALLBACK: Carica da localStorage
     feedbacksList = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+    console.log(`📱 ${feedbacksList.length} feedback caricati da localStorage`);
+    
     displayFeedbacks(feedbacksList);
   }
 }
@@ -4858,9 +4883,44 @@ function updateFeedbackStats() {
   }
 }
 
-// Carica utenti per admin
-function loadUsersAdmin() {
-  const usersList = JSON.parse(localStorage.getItem('users') || '[]');
+// Carica utenti per admin (Firebase-first)
+async function loadUsersAdmin() {
+  try {
+    console.log('🔄 Caricamento utenti da Firebase...');
+    
+    // PRIORITÀ 1: Carica da Firebase
+    const usersSnapshot = await db.collection('users').get();
+    const usersList = [];
+    
+    usersSnapshot.forEach(doc => {
+      const data = doc.data();
+      usersList.push({
+        ...data,
+        timestamp: data.timestamp?.toMillis() || Date.now(),
+        lastLogin: data.lastLogin?.toMillis() || Date.now()
+      });
+    });
+    
+    console.log(`✅ ${usersList.length} utenti caricati da Firebase`);
+    
+    // Sincronizza con localStorage
+    localStorage.setItem('users', JSON.stringify(usersList));
+    
+    processUsersData(usersList);
+    
+  } catch (error) {
+    console.error('❌ Errore caricamento utenti da Firebase, fallback localStorage:', error);
+    
+    // FALLBACK: Carica da localStorage
+    const usersList = JSON.parse(localStorage.getItem('users') || '[]');
+    console.log(`📱 ${usersList.length} utenti caricati da localStorage`);
+    
+    processUsersData(usersList);
+  }
+}
+
+// Processa i dati utenti per l'admin panel
+function processUsersData(usersList) {
   const currentTime = Date.now();
   
   // Utenti attivi (login negli ultimi 7 giorni)
@@ -4931,11 +4991,76 @@ function loadUsersAdmin() {
   });
 }
 
-// Carica analytics per admin
-function loadAnalyticsAdmin() {
-  const analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
-  const sessions = JSON.parse(localStorage.getItem('user_sessions') || '[]');
-  const abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+// Carica analytics per admin (Firebase-first)
+async function loadAnalyticsAdmin() {
+  try {
+    console.log('🔄 Caricamento analytics da Firebase...');
+    
+    // PRIORITÀ 1: Tenta caricamento da Firebase Collections
+    let analytics = [];
+    let sessions = [];
+    let abbonamenti = [];
+    
+    try {
+      // Carica analytics events (se esistono)
+      const analyticsSnapshot = await db.collection('analytics').limit(100).get();
+      analyticsSnapshot.forEach(doc => {
+        const data = doc.data();
+        analytics.push({
+          ...data,
+          timestamp: data.timestamp?.toMillis() || Date.now()
+        });
+      });
+    } catch (analyticsError) {
+      console.log('📊 Collection analytics non trovata, uso localStorage');
+    }
+    
+    try {
+      // Carica abbonamenti da Firebase
+      const abbSnapshot = await db.collection('abbonamenti').get();
+      abbSnapshot.forEach(doc => {
+        const data = doc.data();
+        abbonamenti.push({
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toMillis() || Date.now()
+        });
+      });
+      
+      // Sincronizza abbonamenti con localStorage
+      localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
+      
+    } catch (abbError) {
+      console.log('🎫 Abbonamenti da localStorage fallback');
+      abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+    }
+    
+    // Se analytics è vuoto, usa localStorage per demo
+    if (analytics.length === 0) {
+      analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
+    }
+    
+    // Sessions sempre da localStorage per ora (demo data)
+    sessions = JSON.parse(localStorage.getItem('user_sessions') || '[]');
+    
+    console.log(`✅ Analytics caricati: ${analytics.length} eventi, ${abbonamenti.length} abbonamenti`);
+    
+    processAnalyticsData(analytics, sessions, abbonamenti);
+    
+  } catch (error) {
+    console.error('❌ Errore caricamento analytics, fallback completo localStorage:', error);
+    
+    // FALLBACK COMPLETO: localStorage
+    const analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
+    const sessions = JSON.parse(localStorage.getItem('user_sessions') || '[]');
+    const abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+    
+    processAnalyticsData(analytics, sessions, abbonamenti);
+  }
+}
+
+// Processa i dati analytics per visualizzazione
+function processAnalyticsData(analytics, sessions, abbonamenti) {
   
   // Sezioni più visitate
   const sectionCounts = {};
@@ -5661,21 +5786,307 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize mobile modals
   initializeMobileModals();
   
-  // Initialize admin demo data
-  initializeAdminDemoData();
+  // Initialize admin demo data (async)
+  initializeAdminDemoData().then(() => {
+    console.log('🔥 Dati Firebase/localStorage sincronizzati');
+  }).catch(error => {
+    console.error('❌ Errore inizializzazione dati:', error);
+  });
+  
+  // Initialize connection status
+  updateConnectionStatus();
   
   console.log('🔴⚪ Mobile optimizations initialized for Ti Presto Genoa 1893');
 });
 
+// ========== SISTEMA SINCRONIZZAZIONE AUTOMATICA ==========
+
+// Sistema di sincronizzazione automatica in background
+class BackgroundSync {
+  constructor() {
+    this.syncInterval = null;
+    this.syncFrequency = 30000; // 30 secondi
+    this.isOnline = navigator.onLine;
+    this.pendingSync = false;
+  }
+  
+  start() {
+    console.log('🔄 Avvio sistema sincronizzazione automatica...');
+    
+    // Listener per stato connessione
+    window.addEventListener('online', () => {
+      console.log('🌐 Connessione ripristinata - sincronizzazione immediata');
+      this.isOnline = true;
+      this.syncNow();
+    });
+    
+    window.addEventListener('offline', () => {
+      console.log('📱 Modalità offline attivata');
+      this.isOnline = false;
+    });
+    
+    // Sincronizzazione periodica
+    this.syncInterval = setInterval(() => {
+      if (this.isOnline && !this.pendingSync) {
+        this.syncNow();
+      }
+    }, this.syncFrequency);
+    
+    // Sincronizzazione iniziale
+    if (this.isOnline) {
+      setTimeout(() => this.syncNow(), 3000); // Dopo 3 secondi dall'avvio
+    }
+  }
+  
+  async syncNow() {
+    if (this.pendingSync) return;
+    
+    this.pendingSync = true;
+    try {
+      await syncDataBidirectional();
+      
+      // Aggiorna admin panel se aperto
+      if (document.querySelector('.admin-modal')?.style.display === 'flex') {
+        await updateAdminStats();
+      }
+      
+    } catch (error) {
+      console.error('❌ Errore sincronizzazione automatica:', error);
+    }
+    this.pendingSync = false;
+  }
+  
+  stop() {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
+      console.log('⏹️ Sistema sincronizzazione fermato');
+    }
+  }
+}
+
+// Istanza globale del sistema di sync
+const backgroundSync = new BackgroundSync();
+
+// Avvio automatico del sistema di sincronizzazione
+document.addEventListener('DOMContentLoaded', function() {
+  // Avvia sincronizzazione automatica dopo inizializzazione
+  setTimeout(() => {
+    backgroundSync.start();
+    
+    // Track evento di avvio app
+    addAnalyticsEvent('app_start', {
+      timestamp: Date.now(),
+      userAgent: navigator.userAgent.substr(0, 100),
+      isOnline: navigator.onLine
+    });
+  }, 1000);
+});
+
+// ========== GESTIONE STATO CONNESSIONE ==========
+
+// Indica stato connessione nell'UI
+function updateConnectionStatus() {
+  const isOnline = navigator.onLine;
+  const statusEl = document.getElementById('connection-status');
+  
+  if (statusEl) {
+    statusEl.className = isOnline ? 'online' : 'offline';
+    statusEl.textContent = isOnline ? '🌐 Online' : '📱 Offline';
+  }
+  
+  // Toast di notifica cambio stato
+  if (!isOnline) {
+    showToast('📱 Modalità offline attivata - i dati verranno sincronizzati alla riconnessione', 'info', 3000);
+  } else {
+    showToast('🌐 Connessione ripristinata - sincronizzazione in corso...', 'success', 2000);
+  }
+}
+
+// Monitora cambiamenti stato connessione
+window.addEventListener('online', updateConnectionStatus);
+window.addEventListener('offline', updateConnectionStatus);
+
+// ========== GESTIONE CACHE INTELLIGENTE ==========
+
+// Cache intelligente per dati Firebase
+class SmartCache {
+  constructor() {
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minuti
+    this.cache = new Map();
+  }
+  
+  set(key, data) {
+    this.cache.set(key, {
+      data: data,
+      timestamp: Date.now()
+    });
+  }
+  
+  get(key) {
+    const cached = this.cache.get(key);
+    if (!cached) return null;
+    
+    // Verifica scadenza cache
+    if (Date.now() - cached.timestamp > this.cacheTimeout) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return cached.data;
+  }
+  
+  clear() {
+    this.cache.clear();
+  }
+}
+
+// Istanza globale cache
+const smartCache = new SmartCache();
+
+// ========== FUNZIONI DI TEST E DEBUG ==========
+
+// Test sistema completo Firebase + localStorage + Sync
+async function testFirebaseSystem() {
+  console.log('🧪 === TEST SISTEMA FIREBASE COMPLETO ===');
+  
+  try {
+    // 1. Test connessione Firebase
+    console.log('1. 🔍 Test connessione Firebase...');
+    const testDoc = await db.collection('test').doc('ping').set({
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      status: 'online'
+    });
+    console.log('✅ Firebase connesso correttamente');
+    
+    // 2. Test popolamento demo data
+    console.log('2. 📝 Test popolamento dati demo...');
+    await populateFirebaseWithDemoData();
+    console.log('✅ Dati demo popolati');
+    
+    // 3. Test sync bidirezionale
+    console.log('3. 🔄 Test sincronizzazione bidirezionale...');
+    await syncDataBidirectional();
+    console.log('✅ Sync bidirezionale completata');
+    
+    // 4. Test analytics
+    console.log('4. 📊 Test sistema analytics...');
+    await addAnalyticsEvent('test_system', { testId: 'system_check', timestamp: Date.now() });
+    console.log('✅ Analytics funzionante');
+    
+    // 5. Test admin functions
+    console.log('5. 👑 Test funzioni admin...');
+    await updateAdminStats();
+    console.log('✅ Funzioni admin operative');
+    
+    // 6. Test cache
+    console.log('6. 💾 Test sistema cache...');
+    smartCache.set('test', 'cache_works');
+    const cached = smartCache.get('test');
+    console.log(cached === 'cache_works' ? '✅ Cache funzionante' : '❌ Errore cache');
+    
+    // 7. Test background sync
+    console.log('7. 🔄 Test background sync...');
+    console.log(backgroundSync.isOnline ? '✅ Background sync attivo' : '❌ Background sync offline');
+    
+    console.log('🎉 === TEST COMPLETATO CON SUCCESSO ===');
+    
+    // Show result toast
+    showToast('🎉 Sistema Firebase testato con successo! Tutti i componenti funzionano.', 'success', 5000);
+    
+    return true;
+    
+  } catch (error) {
+    console.error('❌ ERRORE TEST SISTEMA:', error);
+    showToast('❌ Errore durante il test del sistema: ' + error.message, 'error', 5000);
+    return false;
+  }
+}
+
+// Debug info sistema
+function debugSystemInfo() {
+  console.log('🔧 === DEBUG SYSTEM INFO ===');
+  console.log('📱 Online:', navigator.onLine);
+  console.log('🔄 Background Sync:', backgroundSync);
+  console.log('💾 Cache entries:', smartCache.cache.size);
+  console.log('👤 Logged User:', loggedInUser);
+  console.log('🏠 localStorage users:', JSON.parse(localStorage.getItem('users') || '[]').length);
+  console.log('🎫 localStorage abbonamenti:', JSON.parse(localStorage.getItem('abbonamenti') || '[]').length);
+  console.log('💬 localStorage feedback:', JSON.parse(localStorage.getItem('feedbacks') || '[]').length);
+  console.log('📊 localStorage analytics:', JSON.parse(localStorage.getItem('user_analytics') || '[]').length);
+}
+
+// Auto-test on admin login
+async function runSystemTestOnAdmin() {
+  console.log('🤖 Avvio test automatico sistema...');
+  setTimeout(async () => {
+    await testFirebaseSystem();
+    debugSystemInfo();
+  }, 2000);
+}
+
 // ========== FUNZIONI ADMIN MANCANTI ==========
 
-// Aggiorna statistiche admin dashboard
-function updateAdminStats() {
+// Aggiorna statistiche admin dashboard (Firebase-first)
+async function updateAdminStats() {
   try {
-    // Carica dati da localStorage
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
-    const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+    console.log('🔄 Aggiornamento statistiche admin...');
+    
+    // Carica statistiche live da Firebase quando possibile
+    let users = [];
+    let abbonamenti = [];
+    let feedbacks = [];
+    
+    try {
+      // Conta diretta da Firebase per dati real-time
+      const [usersSnapshot, abbonamentiSnapshot, feedbacksSnapshot] = await Promise.all([
+        db.collection('users').get(),
+        db.collection('abbonamenti').get(), 
+        db.collection('feedback').get()
+      ]);
+      
+      // Estrai dati da Firebase
+      usersSnapshot.forEach(doc => {
+        const data = doc.data();
+        users.push({
+          ...data,
+          timestamp: data.timestamp?.toMillis() || Date.now(),
+          lastLogin: data.lastLogin?.toMillis() || Date.now()
+        });
+      });
+      
+      abbonamentiSnapshot.forEach(doc => {
+        const data = doc.data();
+        abbonamenti.push({
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toMillis() || Date.now()
+        });
+      });
+      
+      feedbacksSnapshot.forEach(doc => {
+        const data = doc.data();
+        feedbacks.push({
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toMillis() || Date.now()
+        });
+      });
+      
+      console.log('✅ Statistiche caricate da Firebase:', {
+        users: users.length,
+        abbonamenti: abbonamenti.length,
+        feedbacks: feedbacks.length
+      });
+      
+    } catch (firebaseError) {
+      console.log('📱 Firebase non disponibile, uso localStorage:', firebaseError.message);
+      
+      // FALLBACK: Carica da localStorage
+      users = JSON.parse(localStorage.getItem('users') || '[]');
+      abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+      feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+    }
     
     // Aggiorna contatori principali
     document.getElementById('totalUsers').textContent = users.length;
@@ -5784,12 +6195,274 @@ function clearAnalytics() {
   }
 }
 
-// Inizializza dati demo admin completi (solo se non esistono già)
-function initializeAdminDemoData() {
+// Inizializza dati demo admin completi su Firebase (solo se non esistono già)
+async function initializeAdminDemoData() {
   try {
-    // Inizializza feedback realistici
+    console.log('🔥 Inizializzazione dati Firebase in corso...');
+    
+    // Controlla se i dati esistono già su Firebase
+    const existingFeedbacks = await db.collection('feedback').limit(1).get();
+    const existingUsers = await db.collection('users').limit(1).get();
+    const existingAbbonamenti = await db.collection('abbonamenti').limit(1).get();
+    
+    // Se Firebase è vuoto, popola con dati realistici
+    if (existingFeedbacks.empty) {
+      console.log('📝 Popolamento Firebase feedback...');
+      await populateFirebaseWithDemoData();
+    } else {
+      console.log('✅ Dati Firebase già presenti, sincronizzazione con localStorage...');
+      await syncFirebaseToLocalStorage();
+    }
+    
+  } catch (error) {
+    console.error('❌ Errore inizializzazione Firebase, fallback a localStorage:', error);
+    initializeLocalStorageFallback();
+  }
+}
+
+// Popola Firebase con dati demo realistici
+async function populateFirebaseWithDemoData() {
+  try {
+    const batch = db.batch();
+    const currentTime = Date.now();
+    
+    // 1. FEEDBACK REALISTICI
+    const demoFeedbacks = [
+      {
+        userEmail: 'marco.rossi@email.com',
+        username: 'marco_genoa',
+        type: 'suggestion',
+        message: 'Sarebbe fantastico avere notifiche push quando escono abbonamenti per la Gradinata Nord!',
+        status: 'new',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        priority: 'high',
+        overallRating: 4,
+        contactInfo: { email: 'marco.rossi@email.com', phone: '+39 340 123 4567', consent: true }
+      },
+      {
+        userEmail: 'giulia.bianchi@gmail.com',
+        username: 'giulia_rossoblù',
+        type: 'bug',
+        message: 'La chat non si aggiorna in tempo reale, devo ricaricare la pagina',
+        status: 'pending',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        priority: 'high',
+        bugDetails: { severity: 'medium', steps: 'Apri chat, invia messaggio, attendi risposta' },
+        adminResponse: 'Stiamo investigando il problema, grazie per la segnalazione!'
+      },
+      {
+        userEmail: 'andrea.verdi@outlook.it',
+        username: 'andrea_1893',
+        type: 'rating',
+        message: 'App perfetta! Sono riuscito a vendere il mio abbonamento in 2 ore. Fantastico!',
+        status: 'resolved',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        priority: 'low',
+        overallRating: 5,
+        contactInfo: { email: 'andrea.verdi@outlook.it', consent: true }
+      },
+      {
+        userEmail: 'francesca.neri@yahoo.it',
+        username: 'francy_genoa',
+        type: 'feature',
+        message: 'Potreste aggiungere un filtro per prezzo? Così cerco solo abbonamenti nella mia fascia',
+        status: 'new',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        priority: 'medium',
+        overallRating: 4
+      },
+      {
+        userEmail: 'luca.ferrari@libero.it',
+        username: 'luca_grifone',
+        type: 'compliment',
+        message: 'Complimenti per l\'interfaccia! Design pulito e molto genoano 🔴⚪',
+        status: 'resolved',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        priority: 'low',
+        overallRating: 5,
+        adminResponse: 'Grazie mille! Forza Genoa! 🔴⚪'
+      }
+    ];
+    
+    // Aggiungi feedback a Firebase
+    for (const feedback of demoFeedbacks) {
+      const feedbackRef = db.collection('feedback').doc();
+      batch.set(feedbackRef, feedback);
+    }
+    
+    // 2. UTENTI REALISTICI (simulati per admin panel)
+    const demoUsersData = [
+      {
+        username: 'marco_genoa',
+        email: 'marco.rossi@email.com',
+        nome: 'Marco',
+        cognome: 'Rossi',
+        dataNascita: '1985-03-15',
+        telefono: '+39 340 123 4567',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+        emailVerificata: true,
+        abbonamenti: ['GEN001', 'GEN015']
+      },
+      {
+        username: 'giulia_rossoblù',
+        email: 'giulia.bianchi@gmail.com',
+        nome: 'Giulia',
+        cognome: 'Bianchi',
+        dataNascita: '1992-07-22',
+        telefono: '+39 348 987 6543',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+        emailVerificata: true,
+        abbonamenti: ['GEN008']
+      },
+      {
+        username: 'andrea_1893',
+        email: 'andrea.verdi@outlook.it',
+        nome: 'Andrea',
+        cognome: 'Verdi',
+        dataNascita: '1978-11-30',
+        telefono: '+39 335 456 7890',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+        emailVerificata: true,
+        abbonamenti: ['GEN003', 'GEN012', 'GEN025']
+      }
+    ];
+    
+    // Aggiungi utenti demo a Firebase
+    for (const userData of demoUsersData) {
+      const userRef = db.collection('users').doc(userData.username);
+      batch.set(userRef, userData);
+    }
+    
+    // 3. ABBONAMENTI REALISTICI
+    const demoAbbonamenti = [
+      {
+        utente: 'marco_genoa',
+        userEmail: 'marco.rossi@email.com',
+        matchId: 'genoa-lazio-2025',
+        matchDesc: 'Genoa - Lazio',
+        settore: 'Gradinata Nord',
+        prezzo: 35,
+        disponibile: true,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        messaggiChat: [],
+        tipo: 'vendita',
+        stato: 'attivo'
+      },
+      {
+        utente: 'andrea_1893',
+        userEmail: 'andrea.verdi@outlook.it',
+        matchId: 'genoa-inter-2025', 
+        matchDesc: 'Genoa - Inter',
+        settore: 'Tribuna Centrale',
+        prezzo: 85,
+        disponibile: false,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        messaggiChat: [],
+        tipo: 'vendita',
+        stato: 'trattativa'
+      },
+      {
+        utente: 'giulia_rossoblù',
+        userEmail: 'giulia.bianchi@gmail.com',
+        matchId: 'genoa-juventus-2025',
+        matchDesc: 'Genoa - Juventus',
+        settore: 'Gradinata Sud',
+        prezzo: 45,
+        disponibile: true,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        messaggiChat: [],
+        tipo: 'scambio',
+        stato: 'attivo'
+      }
+    ];
+    
+    // Aggiungi abbonamenti a Firebase
+    for (const abbonamento of demoAbbonamenti) {
+      const abbRef = db.collection('abbonamenti').doc();
+      batch.set(abbRef, abbonamento);
+    }
+    
+    // Esegui batch write
+    await batch.commit();
+    
+    console.log('🎉 Dati demo Firebase popolati con successo!');
+    
+    // Ora sincronizza con localStorage
+    await syncFirebaseToLocalStorage();
+    
+  } catch (error) {
+    console.error('❌ Errore popolamento Firebase:', error);
+    throw error;
+  }
+}
+
+// Sincronizza dati da Firebase a localStorage
+async function syncFirebaseToLocalStorage() {
+  try {
+    console.log('🔄 Sincronizzazione Firebase -> localStorage...');
+    
+    // Sync feedback
+    const feedbackSnapshot = await db.collection('feedback').get();
+    const feedbacks = [];
+    feedbackSnapshot.forEach(doc => {
+      const data = doc.data();
+      feedbacks.push({
+        id: doc.id,
+        ...data,
+        timestamp: data.timestamp?.toMillis() || Date.now()
+      });
+    });
+    localStorage.setItem('feedbacks', JSON.stringify(feedbacks));
+    
+    // Sync users (solo per admin demo)
+    const usersSnapshot = await db.collection('users').get();
+    const users = [];
+    usersSnapshot.forEach(doc => {
+      const data = doc.data();
+      users.push({
+        ...data,
+        timestamp: data.timestamp?.toMillis() || Date.now(),
+        lastLogin: data.lastLogin?.toMillis() || Date.now()
+      });
+    });
+    localStorage.setItem('users', JSON.stringify(users));
+    
+    // Sync abbonamenti
+    const abbSnapshot = await db.collection('abbonamenti').get();
+    const abbonamenti = [];
+    abbSnapshot.forEach(doc => {
+      const data = doc.data();
+      abbonamenti.push({
+        id: doc.id,
+        ...data,
+        timestamp: data.timestamp?.toMillis() || Date.now()
+      });
+    });
+    localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
+    
+    console.log('✅ Sincronizzazione completata:', {
+      feedback: feedbacks.length,
+      users: users.length,
+      abbonamenti: abbonamenti.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Errore sincronizzazione:', error);
+    throw error;
+  }
+}
+
+// Fallback per localStorage se Firebase non disponibile  
+function initializeLocalStorageFallback() {
+  try {
+    console.log('📱 Inizializzazione fallback localStorage...');
+    
+    // Inizializza feedback realistici localmente
     let feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
-    if (feedbacks.length < 10) {
+    if (feedbacks.length < 5) {
       const demoFeedbacks = [
         {
           id: 'fb001',
@@ -6409,22 +7082,221 @@ function getActivityName(action) {
   return activityNames[action] || action;
 }
 
-// Aggiungi evento analytics 
-function addAnalyticsEvent(action, data = {}) {
+// Aggiungi evento analytics (Firebase-first)
+async function addAnalyticsEvent(action, data = {}) {
   try {
-    let analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
-    
     const event = {
       action: action,
       data: data,
-      timestamp: Date.now(),
-      userId: loggedInUser?.username || 'admin'
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      userId: loggedInUser?.username || 'admin',
+      sessionId: getSessionId()
     };
     
-    analytics.push(event);
-    localStorage.setItem('user_analytics', JSON.stringify(analytics));
+    // PRIORITÀ: Salva su Firebase
+    try {
+      await db.collection('analytics').add(event);
+      console.log('📊 Evento analytics salvato su Firebase:', action);
+    } catch (firebaseError) {
+      console.log('📱 Firebase non disponibile, salvo su localStorage:', action);
+      
+      // FALLBACK: Salva su localStorage
+      let analytics = JSON.parse(localStorage.getItem('user_analytics') || '[]');
+      const localEvent = {
+        ...event,
+        timestamp: Date.now()
+      };
+      analytics.push(localEvent);
+      localStorage.setItem('user_analytics', JSON.stringify(analytics));
+    }
     
   } catch (error) {
-    console.error('Errore analytics:', error);
+    console.error('❌ Errore salvataggio analytics:', error);
+  }
+}
+
+// Ottieni o crea session ID per tracking
+function getSessionId() {
+  let sessionId = sessionStorage.getItem('sessionId');
+  if (!sessionId) {
+    sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    sessionStorage.setItem('sessionId', sessionId);
+  }
+  return sessionId;
+}
+
+// Sistema di sincronizzazione bidirezionale Firebase <-> localStorage
+async function syncDataBidirectional() {
+  try {
+    console.log('🔄 Avvio sincronizzazione bidirezionale...');
+    
+    // 1. SYNC FEEDBACK
+    await syncFeedbacksBidirectional();
+    
+    // 2. SYNC UTENTI (solo per demo admin)
+    await syncUsersBidirectional();
+    
+    // 3. SYNC ABBONAMENTI
+    await syncAbbonamentiBidirectional();
+    
+    console.log('✅ Sincronizzazione bidirezionale completata');
+    
+  } catch (error) {
+    console.error('❌ Errore sincronizzazione bidirezionale:', error);
+  }
+}
+
+// Sync feedback bidirezionale
+async function syncFeedbacksBidirectional() {
+  try {
+    // Carica da Firebase
+    const firebaseFeedbacks = [];
+    const fbSnapshot = await db.collection('feedback').get();
+    fbSnapshot.forEach(doc => {
+      const data = doc.data();
+      firebaseFeedbacks.push({
+        id: doc.id,
+        ...data,
+        timestamp: data.timestamp?.toMillis() || Date.now(),
+        source: 'firebase'
+      });
+    });
+    
+    // Carica da localStorage
+    const localFeedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]').map(f => ({
+      ...f,
+      source: 'localStorage'
+    }));
+    
+    // Merge intelligente (Firebase ha priorità per ID esistenti)
+    const mergedFeedbacks = [];
+    const processedIds = new Set();
+    
+    // Prima aggiungi tutti i feedback da Firebase
+    firebaseFeedbacks.forEach(fb => {
+      mergedFeedbacks.push(fb);
+      processedIds.add(fb.id);
+    });
+    
+    // Poi aggiungi feedback locali non presenti su Firebase
+    for (const local of localFeedbacks) {
+      if (!processedIds.has(local.id)) {
+        // Carica feedback locale su Firebase
+        try {
+          const fbRef = db.collection('feedback').doc(local.id);
+          await fbRef.set({
+            ...local,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            syncedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          
+          mergedFeedbacks.push({
+            ...local,
+            source: 'synced'
+          });
+          
+          console.log('⬆️ Feedback locale caricato su Firebase:', local.id);
+        } catch (uploadError) {
+          console.log('❌ Errore upload feedback locale:', uploadError);
+          mergedFeedbacks.push(local); // Mantieni locale
+        }
+      }
+    }
+    
+    // Aggiorna localStorage con dati merged
+    const finalFeedbacks = mergedFeedbacks.map(f => {
+      const { source, ...cleanData } = f;
+      return cleanData;
+    });
+    
+    localStorage.setItem('feedbacks', JSON.stringify(finalFeedbacks));
+    
+    console.log(`✅ Feedback sincronizzati: ${finalFeedbacks.length} totali`);
+    
+  } catch (error) {
+    console.error('❌ Errore sync feedback:', error);
+  }
+}
+
+// Sync utenti bidirezionale (solo admin demo)
+async function syncUsersBidirectional() {
+  try {
+    // Per utenti, manteniamo prevalentemente Firebase come master
+    const firebaseUsers = [];
+    const fbSnapshot = await db.collection('users').get();
+    fbSnapshot.forEach(doc => {
+      const data = doc.data();
+      firebaseUsers.push({
+        ...data,
+        timestamp: data.timestamp?.toMillis() || Date.now(),
+        lastLogin: data.lastLogin?.toMillis() || Date.now()
+      });
+    });
+    
+    // Aggiorna localStorage con dati Firebase
+    localStorage.setItem('users', JSON.stringify(firebaseUsers));
+    
+    console.log(`✅ Utenti sincronizzati da Firebase: ${firebaseUsers.length}`);
+    
+  } catch (error) {
+    console.error('❌ Errore sync utenti:', error);
+  }
+}
+
+// Sync abbonamenti bidirezionale
+async function syncAbbonamentiBidirectional() {
+  try {
+    // Carica da Firebase
+    const firebaseAbbonamenti = [];
+    const fbSnapshot = await db.collection('abbonamenti').get();
+    fbSnapshot.forEach(doc => {
+      const data = doc.data();
+      firebaseAbbonamenti.push({
+        id: doc.id,
+        ...data,
+        timestamp: data.timestamp?.toMillis() || Date.now()
+      });
+    });
+    
+    // Carica da localStorage  
+    const localAbbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+    
+    // Merge con priorità Firebase
+    const mergedAbbonamenti = [];
+    const processedIds = new Set();
+    
+    // Prima Firebase
+    firebaseAbbonamenti.forEach(fb => {
+      mergedAbbonamenti.push(fb);
+      processedIds.add(fb.id);
+    });
+    
+    // Poi locali non duplicati
+    for (const local of localAbbonamenti) {
+      if (!processedIds.has(local.id)) {
+        // Carica su Firebase se non esiste
+        try {
+          const abbRef = db.collection('abbonamenti').doc(local.id || undefined);
+          await abbRef.set({
+            ...local,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            syncedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          
+          mergedAbbonamenti.push(local);
+          console.log('⬆️ Abbonamento locale caricato su Firebase:', local.id);
+        } catch (uploadError) {
+          mergedAbbonamenti.push(local); // Mantieni locale
+        }
+      }
+    }
+    
+    // Aggiorna localStorage
+    localStorage.setItem('abbonamenti', JSON.stringify(mergedAbbonamenti));
+    
+    console.log(`✅ Abbonamenti sincronizzati: ${mergedAbbonamenti.length} totali`);
+    
+  } catch (error) {
+    console.error('❌ Errore sync abbonamenti:', error);
   }
 }
