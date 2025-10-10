@@ -738,67 +738,248 @@
 
 <!-- ========== SEZIONE ADMIN PANEL ========== -->
 <section class="section" id="admin">
-  <div class="admin-container">
-    <div class="admin-header">
-      <h2>👑 Pannello Amministrazione</h2>
-      <p>Gestione completa della piattaforma Ti Presto Genoa 1893</p>
-      <div class="admin-header-actions">
-        <div id="adminBadge" class="admin-badge">AMMINISTRATORE</div>
-        <button type="button" onclick="testFirebaseSystem(); return false;" class="test-system-btn" title="Testa integrità sistema Firebase">🧪 Test Sistema</button>
-        <button type="button" onclick="debugSystemInfo(); return false;" class="debug-info-btn" title="Mostra informazioni debug">🔧 Debug Info</button>
+  <div class="admin-container-premium">
+    <!-- Admin Header Premium -->
+    <div class="admin-header-premium">
+      <div class="admin-hero-section">
+        <div class="admin-crown-badge">
+          <div class="crown-icon">👑</div>
+          <div class="crown-pulse"></div>
+        </div>
+        <h1 class="admin-title">Pannello Amministrazione</h1>
+        <p class="admin-subtitle">Controllo completo della piattaforma Ti Presto Genoa 1893</p>
+        <div class="admin-status-indicator">
+          <div class="status-dot pulsing"></div>
+          <span class="status-text">Sistema Online</span>
+        </div>
+      </div>
+      
+      <div class="admin-tools-bar">
+        <div class="admin-badge-premium">
+          <span class="badge-icon">🛡️</span>
+          <span class="badge-text">AMMINISTRATORE</span>
+        </div>
+        <div class="admin-quick-actions">
+          <button type="button" onclick="testFirebaseSystem(); return false;" class="admin-btn admin-btn-test" title="Testa integrità sistema Firebase">
+            <span class="btn-icon">🧪</span>
+            <span class="btn-text">Test Sistema</span>
+          </button>
+          <button type="button" onclick="debugSystemInfo(); return false;" class="admin-btn admin-btn-debug" title="Mostra informazioni debug">
+            <span class="btn-icon">🔧</span>
+            <span class="btn-text">Debug</span>
+          </button>
+          <button type="button" onclick="exportBackup(); return false;" class="admin-btn admin-btn-backup" title="Backup completo del sistema">
+            <span class="btn-icon">💾</span>
+            <span class="btn-text">Backup</span>
+          </button>
+        </div>
       </div>
     </div>
     
-    <div class="admin-dashboard">
-      <div class="admin-stats">
-        <div class="stat-card">
-          <div class="stat-icon">👥</div>
-          <div class="stat-content">
-            <h3 id="totalUsers">0</h3>
-            <p>Utenti Registrati</p>
+    <!-- Dashboard Premium Stats -->
+    <div class="admin-dashboard-premium">
+      <div class="dashboard-stats-grid">
+        <div class="stat-card-premium">
+          <div class="stat-card-header">
+            <div class="stat-icon-container stat-users">
+              <span class="stat-icon">👥</span>
+            </div>
+            <div class="stat-trend positive">
+              <span class="trend-icon">📈</span>
+              <span class="trend-text">+12%</span>
+            </div>
+          </div>
+          <div class="stat-content-premium">
+            <h3 class="stat-number" id="totalUsers">0</h3>
+            <p class="stat-label">Utenti Registrati</p>
+            <div class="stat-detail">
+              <span id="activeUsers">0</span> attivi negli ultimi 30gg
+            </div>
           </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon">🎫</div>
-          <div class="stat-content">
-            <h3 id="totalAbbonamenti">0</h3>
-            <p>Abbonamenti Attivi</p>
+        
+        <div class="stat-card-premium">
+          <div class="stat-card-header">
+            <div class="stat-icon-container stat-tickets">
+              <span class="stat-icon">🎫</span>
+            </div>
+            <div class="stat-trend positive">
+              <span class="trend-icon">📈</span>
+              <span class="trend-text">+8%</span>
+            </div>
+          </div>
+          <div class="stat-content-premium">
+            <h3 class="stat-number" id="totalAbbonamenti">0</h3>
+            <p class="stat-label">Abbonamenti Attivi</p>
+            <div class="stat-detail">
+              <span id="newAbbonamentiToday">0</span> nuovi oggi
+            </div>
           </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon">📊</div>
-          <div class="stat-content">
-            <h3 id="engagementScore">0</h3>
-            <p>Engagement Score</p>
+        
+        <div class="stat-card-premium">
+          <div class="stat-card-header">
+            <div class="stat-icon-container stat-messages">
+              <span class="stat-icon">�</span>
+            </div>
+            <div class="stat-trend positive">
+              <span class="trend-icon">📈</span>
+              <span class="trend-text">+15%</span>
+            </div>
           </div>
+          <div class="stat-content-premium">
+            <h3 class="stat-number" id="totalMessages">0</h3>
+            <p class="stat-label">Messaggi Scambiati</p>
+            <div class="stat-detail">
+              <span id="messagesDaily">0</span> oggi
+            </div>
+          </div>
+        </div>
+        
+        <div class="stat-card-premium">
+          <div class="stat-card-header">
+            <div class="stat-icon-container stat-engagement">
+              <span class="stat-icon">�📊</span>
+            </div>
+            <div class="stat-trend positive">
+              <span class="trend-icon">📈</span>
+              <span class="trend-text">+5%</span>
+            </div>
+          </div>
+          <div class="stat-content-premium">
+            <h3 class="stat-number" id="engagementScore">0%</h3>
+            <p class="stat-label">Engagement Score</p>
+            <div class="stat-detail">
+              Tasso di conversione
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Real-time Activity Feed -->
+      <div class="activity-feed-premium">
+        <div class="feed-header">
+          <h3 class="feed-title">
+            <span class="feed-icon">⚡</span>
+            Attività in Tempo Reale
+          </h3>
+          <div class="live-indicator">
+            <div class="live-dot"></div>
+            <span>LIVE</span>
+          </div>
+        </div>
+        <div class="feed-content" id="activityFeed">
+          <!-- Attività caricate dinamicamente -->
         </div>
       </div>
     </div>
     
-    <div class="admin-tabs">
-      <button type="button" class="tab-button active" onclick="showAdminTab('users'); return false;">👥 Gestione Utenti</button>
-      <button type="button" class="tab-button" onclick="showAdminTab('analytics'); return false;">📊 Analytics</button>
-      <button type="button" class="tab-button" onclick="showAdminTab('content'); return false;">📝 Moderazione</button>
-      <button type="button" class="tab-button" onclick="showAdminTab('settings'); return false;">⚙️ Impostazioni</button>
+    <!-- Navigation Tabs Premium -->
+    <div class="admin-nav-premium">
+      <div class="nav-container">
+        <button type="button" class="admin-nav-tab active" onclick="showAdminTab('users'); return false;" data-tab="users">
+          <span class="tab-icon">👥</span>
+          <span class="tab-label">Gestione Utenti</span>
+          <span class="tab-badge" id="usersBadge">0</span>
+        </button>
+        <button type="button" class="admin-nav-tab" onclick="showAdminTab('analytics'); return false;" data-tab="analytics">
+          <span class="tab-icon">📊</span>
+          <span class="tab-label">Analytics</span>
+          <span class="tab-badge" id="analyticsBadge">LIVE</span>
+        </button>
+        <button type="button" class="admin-nav-tab" onclick="showAdminTab('moderation'); return false;" data-tab="moderation">
+          <span class="tab-icon">�️</span>
+          <span class="tab-label">Moderazione</span>
+          <span class="tab-badge alert" id="moderationBadge">0</span>
+        </button>
+        <button type="button" class="admin-nav-tab" onclick="showAdminTab('settings'); return false;" data-tab="settings">
+          <span class="tab-icon">⚙️</span>
+          <span class="tab-label">Impostazioni</span>
+          <span class="tab-badge" id="settingsBadge">OK</span>
+        </button>
+      </div>
     </div>
     
-    <div class="admin-content">
-      <!-- Tab Gestione Utenti -->
-      <div id="admin-users" class="admin-tab-content active">
-        <div class="users-management">
-          <h3>👥 Gestione Utenti</h3>
-          <div class="users-stats">
-            <div class="user-stat">
-              <span class="stat-number" id="activeUsers">0</span>
-              <span class="stat-label">Utenti Attivi</span>
+    <!-- Admin Content Premium -->
+    <div class="admin-content-premium">
+      <!-- Tab Gestione Utenti Premium -->
+      <div id="admin-users" class="admin-tab-content-premium active">
+        <div class="content-header-premium">
+          <div class="header-info">
+            <h2 class="content-title">👥 Gestione Utenti</h2>
+            <p class="content-description">Controllo completo degli utenti registrati alla piattaforma</p>
+          </div>
+          <div class="header-actions">
+            <button type="button" onclick="exportUsersCSV(); return false;" class="action-btn export-btn">
+              <span class="btn-icon">📊</span>
+              <span class="btn-text">Esporta CSV</span>
+            </button>
+            <button type="button" onclick="sendBulkMessage(); return false;" class="action-btn message-btn">
+              <span class="btn-icon">💬</span>
+              <span class="btn-text">Messaggio di Gruppo</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="users-overview-premium">
+          <div class="overview-stats">
+            <div class="overview-stat-card">
+              <div class="stat-icon-container">
+                <span class="stat-icon">👤</span>
+              </div>
+              <div class="stat-info">
+                <h4 class="stat-value" id="totalUsersCount">0</h4>
+                <p class="stat-label">Totale Utenti</p>
+              </div>
             </div>
-            <div class="user-stat">
-              <span class="stat-number" id="newUsersToday">0</span>
-              <span class="stat-label">Nuovi Oggi</span>
+            <div class="overview-stat-card">
+              <div class="stat-icon-container verified">
+                <span class="stat-icon">✅</span>
+              </div>
+              <div class="stat-info">
+                <h4 class="stat-value" id="verifiedUsersCount">0</h4>
+                <p class="stat-label">Email Verificate</p>
+              </div>
+            </div>
+            <div class="overview-stat-card">
+              <div class="stat-icon-container active">
+                <span class="stat-icon">🟢</span>
+              </div>
+              <div class="stat-info">
+                <h4 class="stat-value" id="activeUsersCount">0</h4>
+                <p class="stat-label">Attivi (30gg)</p>
+              </div>
+            </div>
+            <div class="overview-stat-card">
+              <div class="stat-icon-container new">
+                <span class="stat-icon">⭐</span>
+              </div>
+              <div class="stat-info">
+                <h4 class="stat-value" id="newUsersTodayCount">0</h4>
+                <p class="stat-label">Nuovi Oggi</p>
+              </div>
             </div>
           </div>
-          <div id="usersList" class="users-list">
-            <!-- Gli utenti verranno caricati dinamicamente -->
+        </div>
+        
+        <div class="users-table-premium">
+          <div class="table-controls">
+            <div class="search-filters">
+              <div class="search-box">
+                <input type="text" id="userSearchInput" placeholder="🔍 Cerca utenti..." class="search-input">
+              </div>
+              <div class="filter-buttons">
+                <button type="button" class="filter-btn active" data-filter="all">Tutti</button>
+                <button type="button" class="filter-btn" data-filter="verified">Verificati</button>
+                <button type="button" class="filter-btn" data-filter="active">Attivi</button>
+                <button type="button" class="filter-btn" data-filter="admin">Admin</button>
+              </div>
+            </div>
+          </div>
+          <div class="table-container">
+            <div id="usersTablePremium" class="users-table">
+              <!-- Tabella utenti caricata dinamicamente -->
+            </div>
           </div>
         </div>
       </div>

@@ -1284,6 +1284,247 @@ function initializeScrollAnimations() {
   });
 }
 
+// ===============================
+// ADMIN PREMIUM FUNCTIONS
+// ===============================
+
+// Carica utenti con interfaccia premium
+async function loadUsersAdminPremium() {
+  try {
+    console.log('🔄 Caricamento utenti admin premium...');
+    
+    let allUsers = [];
+    
+    try {
+      // PRIORITÀ 1: Firebase
+      const usersSnapshot = await db.collection('users').get();
+      usersSnapshot.forEach(doc => {
+        const data = doc.data();
+        allUsers.push({
+          uid: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toMillis() || Date.now(),
+          lastLogin: data.lastLogin?.toMillis() || Date.now()
+        });
+      });
+      console.log('✅ Utenti caricati da Firebase:', allUsers.length);
+    } catch (firebaseError) {
+      console.log('📱 Firebase non disponibile, uso localStorage');
+      allUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    }
+    
+    // Aggiorna contatori
+    updateUsersCounters(allUsers);
+    
+    // Renderizza tabella premium
+    renderUsersTablePremium(allUsers);
+    
+    // Inizializza filtri e ricerca
+    initializeUsersFilters(allUsers);
+    
+  } catch (error) {
+    console.error('❌ Errore caricamento utenti admin:', error);
+    showToast('❌ Errore durante il caricamento degli utenti', 'error');
+  }
+}
+
+// Aggiorna contatori utenti
+function updateUsersCounters(users) {
+  const totalUsers = users.length;
+  const verifiedUsers = users.filter(u => u.emailVerificata).length;
+  
+  // Calcola utenti attivi (ultimi 30 giorni)
+  const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  const activeUsers = users.filter(u => {
+    const lastLogin = new Date(u.lastLogin || u.timestamp || 0);
+    return lastLogin.getTime() > thirtyDaysAgo;
+  }).length;
+  
+  // Calcola nuovi utenti oggi
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const newUsersToday = users.filter(u => {
+    const userDate = new Date(u.timestamp || 0);
+    return userDate >= today;
+  }).length;
+  
+  // Aggiorna UI
+  const totalEl = document.getElementById('totalUsersCount');
+  const verifiedEl = document.getElementById('verifiedUsersCount');
+  const activeEl = document.getElementById('activeUsersCount');
+  const newEl = document.getElementById('newUsersTodayCount');
+  const badgeEl = document.getElementById('usersBadge');
+  
+  if (totalEl) totalEl.textContent = totalUsers;
+  if (verifiedEl) verifiedEl.textContent = verifiedUsers;
+  if (activeEl) activeEl.textContent = activeUsers;
+  if (newEl) newEl.textContent = newUsersToday;
+  if (badgeEl) badgeEl.textContent = totalUsers;
+}
+
+// Renderizza tabella utenti premium
+function renderUsersTablePremium(users) {
+  const container = document.getElementById('usersTablePremium');
+  if (!container) return;
+  
+  if (users.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state-admin">
+        <div class="empty-icon">👥</div>
+        <h3>Nessun utente trovato</h3>
+        <p>Non ci sono utenti registrati nel sistema</p>
+      </div>
+    `;
+    return;
+  }
+  
+  let tableHTML = `
+    <div class="users-grid-premium">
+  `;
+  
+  users.forEach(user => {
+    const lastLoginDate = new Date(user.lastLogin || user.timestamp || 0);
+    const isRecent = (Date.now() - lastLoginDate.getTime()) < (24 * 60 * 60 * 1000);
+    const isActive = (Date.now() - lastLoginDate.getTime()) < (30 * 24 * 60 * 60 * 1000);
+    
+    tableHTML += `
+      <div class="user-card-premium" data-user-id="${user.uid}">
+        <div class="user-card-header">
+          <div class="user-avatar">
+            <span class="avatar-letter">${(user.nome?.[0] || user.username?.[0] || 'U').toUpperCase()}</span>
+            ${isRecent ? '<div class="online-indicator"></div>' : ''}
+          </div>
+          <div class="user-info">
+            <h4 class="user-name">${user.nome || 'N/A'} ${user.cognome || ''}</h4>
+            <p class="user-username">@${user.username || 'sconosciuto'}</p>
+            <div class="user-badges">
+              ${user.emailVerificata ? '<span class="badge verified">✅ Verificato</span>' : '<span class="badge unverified">⚠️ Non Verificato</span>'}
+              ${user.isAdmin ? '<span class="badge admin">👑 Admin</span>' : ''}
+              ${isActive ? '<span class="badge active">🟢 Attivo</span>' : '<span class="badge inactive">⚫ Inattivo</span>'}
+            </div>
+          </div>
+        </div>
+        
+        <div class="user-card-body">
+          <div class="user-detail">
+            <span class="detail-label">📧 Email:</span>
+            <span class="detail-value">${user.email || 'Non fornita'}</span>
+          </div>
+          <div class="user-detail">
+            <span class="detail-label">📱 Telefono:</span>
+            <span class="detail-value">${user.telefono || 'Non fornito'}</span>
+          </div>
+          <div class="user-detail">
+            <span class="detail-label">📅 Registrato:</span>
+            <span class="detail-value">${formatDateAdmin(user.timestamp)}</span>
+          </div>
+          <div class="user-detail">
+            <span class="detail-label">🕒 Ultimo accesso:</span>
+            <span class="detail-value">${formatDateAdmin(user.lastLogin)}</span>
+          </div>
+        </div>
+        
+        <div class="user-card-actions">
+          <button onclick="sendMessageToUser('${user.uid}'); return false;" class="action-btn-small message">
+            <span>💬</span>
+            Messaggio
+          </button>
+          <button onclick="toggleUserVerification('${user.uid}'); return false;" class="action-btn-small verify">
+            <span>${user.emailVerificata ? '❌' : '✅'}</span>
+            ${user.emailVerificata ? 'Rimuovi' : 'Verifica'}
+          </button>
+          ${!user.isAdmin ? `<button onclick="toggleUserAdmin('${user.uid}'); return false;" class="action-btn-small admin">
+            <span>👑</span>
+            Admin
+          </button>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  tableHTML += `
+    </div>
+  `;
+  
+  container.innerHTML = tableHTML;
+}
+
+// Formatta data per admin
+function formatDateAdmin(timestamp) {
+  if (!timestamp) return 'Mai';
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('it-IT', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// Inizializza filtri utenti
+function initializeUsersFilters(allUsers) {
+  const searchInput = document.getElementById('userSearchInput');
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      filterUsers(allUsers, e.target.value, getActiveFilter());
+    });
+  }
+  
+  filterButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      filterButtons.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      filterUsers(allUsers, searchInput?.value || '', e.target.dataset.filter);
+    });
+  });
+}
+
+// Filtra utenti
+function filterUsers(allUsers, searchTerm, filterType) {
+  let filteredUsers = allUsers;
+  
+  // Applica filtro per tipo
+  if (filterType !== 'all') {
+    switch(filterType) {
+      case 'verified':
+        filteredUsers = filteredUsers.filter(u => u.emailVerificata);
+        break;
+      case 'active':
+        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+        filteredUsers = filteredUsers.filter(u => {
+          const lastLogin = new Date(u.lastLogin || u.timestamp || 0);
+          return lastLogin.getTime() > thirtyDaysAgo;
+        });
+        break;
+      case 'admin':
+        filteredUsers = filteredUsers.filter(u => u.isAdmin);
+        break;
+    }
+  }
+  
+  // Applica ricerca testuale
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    filteredUsers = filteredUsers.filter(user => {
+      return (user.nome?.toLowerCase().includes(term)) ||
+             (user.cognome?.toLowerCase().includes(term)) ||
+             (user.username?.toLowerCase().includes(term)) ||
+             (user.email?.toLowerCase().includes(term));
+    });
+  }
+  
+  renderUsersTablePremium(filteredUsers);
+}
+
+// Helper per ottenere filtro attivo
+function getActiveFilter() {
+  const activeBtn = document.querySelector('.filter-btn.active');
+  return activeBtn?.dataset.filter || 'all';
+}
+
 // --- Vendita abbonamento ---
 async function prenotaAbbonamento(event) {
   event.preventDefault();
@@ -5249,15 +5490,15 @@ let currentAdminTab = 'feedback';
 let feedbacksList = [];
 let analyticsData = {};
 
-// Mostra tab admin
+// Mostra tab admin premium
 function showAdminTab(tabName) {
-  // Nascondi tutti i contenuti tab
-  document.querySelectorAll('.admin-tab-content').forEach(tab => {
+  // Nascondi tutti i contenuti tab (supporta sia vecchio che nuovo sistema)
+  document.querySelectorAll('.admin-tab-content, .admin-tab-content-premium').forEach(tab => {
     tab.classList.remove('active');
   });
   
   // Rimuovi classe active da tutti i bottoni
-  document.querySelectorAll('.tab-button').forEach(btn => {
+  document.querySelectorAll('.tab-button, .admin-nav-tab').forEach(btn => {
     btn.classList.remove('active');
   });
   
@@ -5267,20 +5508,23 @@ function showAdminTab(tabName) {
     targetTab.classList.add('active');
   }
   
-  // Aggiungi classe active al bottone
-  event.target.classList.add('active');
+  // Aggiungi classe active al bottone corretto
+  const activeButton = document.querySelector(`[data-tab="${tabName}"]`) || event?.target;
+  if (activeButton) {
+    activeButton.classList.add('active');
+  }
   
   currentAdminTab = tabName;
   
   // Carica dati per il tab specifico
   switch(tabName) {
     case 'users':
-      loadUsersAdmin();
+      loadUsersAdminPremium();
       break;
     case 'analytics':
       loadAnalyticsAdmin();
       break;
-    case 'content':
+    case 'moderation':
       loadModerationQueue();
       break;
     case 'settings':
