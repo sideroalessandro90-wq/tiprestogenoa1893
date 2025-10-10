@@ -169,7 +169,6 @@
     <button type="button" onclick="showSection('history'); return false;">Storico</button>
     <button type="button" onclick="showSection('mySubscription'); return false;">Le tue Trattative<span id="mySubBadge" class="badge count" style="display:none;margin-left:6px">0</span></button>
     <button type="button" onclick="showSection('contacts'); return false;">Contatti</button>
-    <button type="button" onclick="openFeedbackModal(); return false;" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">💬 Feedback</button>
     <button type="button" id="adminBtn" onclick="showSection('admin'); return false;" style="display:none; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;">👑 Admin Panel</button>
     <button type="button" id="copilotAdminBtn" onclick="copilotAdminLogin(); return false;" style="display:none; background: linear-gradient(135deg, #6f42c1 0%, #563d7c 100%); color: white;" title="GitHub Copilot Admin Access">🤖 Copilot Admin</button>
   </nav>
@@ -546,13 +545,6 @@
           </div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">💬</div>
-          <div class="stat-content">
-            <h3 id="totalFeedbacks">0</h3>
-            <p>Feedback Ricevuti</p>
-          </div>
-        </div>
-        <div class="stat-card">
           <div class="stat-icon">📊</div>
           <div class="stat-content">
             <h3 id="engagementScore">0</h3>
@@ -563,41 +555,15 @@
     </div>
     
     <div class="admin-tabs">
-      <button type="button" class="tab-button active" onclick="showAdminTab('feedback'); return false;">💬 Gestione Feedback</button>
-      <button type="button" class="tab-button" onclick="showAdminTab('users'); return false;">👥 Gestione Utenti</button>
+      <button type="button" class="tab-button active" onclick="showAdminTab('users'); return false;">👥 Gestione Utenti</button>
       <button type="button" class="tab-button" onclick="showAdminTab('analytics'); return false;">📊 Analytics</button>
       <button type="button" class="tab-button" onclick="showAdminTab('content'); return false;">📝 Moderazione</button>
       <button type="button" class="tab-button" onclick="showAdminTab('settings'); return false;">⚙️ Impostazioni</button>
     </div>
     
     <div class="admin-content">
-      <!-- Tab Gestione Feedback -->
-      <div id="admin-feedback" class="admin-tab-content active">
-        <div class="feedback-management">
-          <div class="feedback-header">
-            <h3>💬 Gestione Feedback Utenti</h3>
-            <div class="feedback-filters">
-              <select id="feedbackFilter" onchange="filterFeedbacks()">
-                <option value="all">Tutti i feedback</option>
-                <option value="new">Nuovi</option>
-                <option value="pending">In attesa</option>
-                <option value="resolved">Risolti</option>
-                <option value="bug">Bug Report</option>
-                <option value="suggestion">Suggerimenti</option>
-                <option value="rating">Valutazioni</option>
-              </select>
-              <button onclick="exportFeedbacks()" class="btn-secondary">📤 Esporta</button>
-            </div>
-          </div>
-          
-          <div id="feedbacksList" class="feedbacks-list">
-            <!-- I feedback verranno caricati dinamicamente -->
-          </div>
-        </div>
-      </div>
-      
       <!-- Tab Gestione Utenti -->
-      <div id="admin-users" class="admin-tab-content">
+      <div id="admin-users" class="admin-tab-content active">
         <div class="users-management">
           <h3>👥 Gestione Utenti</h3>
           <div class="users-stats">
@@ -662,13 +628,6 @@
         <div class="admin-settings">
           <h3>⚙️ Impostazioni Sistema</h3>
           <div class="settings-sections">
-            <div class="setting-section">
-              <h4>🔔 Notifiche Email</h4>
-              <label>
-                <input type="checkbox" id="emailNotifications" checked>
-                Invia notifiche email per nuovi feedback
-              </label>
-            </div>
             <div class="setting-section">
               <h4>📊 Analytics</h4>
               <label>
@@ -1182,142 +1141,6 @@
     <div class="modal-footer">
       <button class="btn-primary" onclick="closeModal('privacyPolicyModal')">
         Ho Letto
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Feedback Utenti -->
-<div id="feedbackModal" class="modal" style="display:none;">
-  <div class="modal-content" style="max-width: 600px;">
-    <div class="modal-header" style="background: linear-gradient(135deg, #002147 0%, #c8102e 100%); color: white;">
-      <h2 class="modal-title">💬 Il Tuo Feedback</h2>
-      <button onclick="closeFeedbackModal()" class="modal-close" style="color: white;">&times;</button>
-    </div>
-    <div class="modal-body">
-      <p style="text-align: center; color: #002147; font-weight: 600; margin-bottom: 25px;">
-        🔴⚪ Aiutaci a migliorare Ti Presto per tutti i tifosi rossoblù! 🔴⚪
-      </p>
-      
-      <!-- Tipo di Feedback -->
-      <div class="form-group">
-        <label for="feedbackType" style="font-weight: 600; color: #002147;">Tipo di Feedback:</label>
-        <select id="feedbackType" class="form-control" onchange="updateFeedbackForm()">
-          <option value="">Seleziona tipo di feedback</option>
-          <option value="suggestion">💡 Suggerimento</option>
-          <option value="bug">🐛 Segnalazione Bug</option>
-          <option value="rating">⭐ Valutazione Generale</option>
-          <option value="feature">🚀 Richiesta Funzionalità</option>
-          <option value="compliment">👏 Complimento</option>
-        </select>
-      </div>
-
-      <!-- Valutazione Generale (mostrata solo per rating) -->
-      <div id="ratingSection" class="form-group" style="display: none;">
-        <label style="font-weight: 600; color: #002147;">Valutazione complessiva del sito:</label>
-        <div class="rating-container" style="text-align: center; margin: 15px 0;">
-          <div class="star-rating">
-            <span class="star" data-rating="1">⭐</span>
-            <span class="star" data-rating="2">⭐</span>
-            <span class="star" data-rating="3">⭐</span>
-            <span class="star" data-rating="4">⭐</span>
-            <span class="star" data-rating="5">⭐</span>
-          </div>
-          <p id="ratingText" style="color: #002147; font-weight: 600; margin-top: 10px;">Clicca sulle stelle per valutare</p>
-        </div>
-        
-        <!-- Valutazioni specifiche -->
-        <div class="specific-ratings">
-          <div class="rating-item">
-            <label>📱 Facilità d'uso:</label>
-            <div class="mini-star-rating" data-category="usability">
-              <span class="mini-star" data-rating="1">⭐</span>
-              <span class="mini-star" data-rating="2">⭐</span>
-              <span class="mini-star" data-rating="3">⭐</span>
-              <span class="mini-star" data-rating="4">⭐</span>
-              <span class="mini-star" data-rating="5">⭐</span>
-            </div>
-          </div>
-          <div class="rating-item">
-            <label>⚡ Velocità:</label>
-            <div class="mini-star-rating" data-category="speed">
-              <span class="mini-star" data-rating="1">⭐</span>
-              <span class="mini-star" data-rating="2">⭐</span>
-              <span class="mini-star" data-rating="3">⭐</span>
-              <span class="mini-star" data-rating="4">⭐</span>
-              <span class="mini-star" data-rating="5">⭐</span>
-            </div>
-          </div>
-          <div class="rating-item">
-            <label>🎨 Design:</label>
-            <div class="mini-star-rating" data-category="design">
-              <span class="mini-star" data-rating="1">⭐</span>
-              <span class="mini-star" data-rating="2">⭐</span>
-              <span class="mini-star" data-rating="3">⭐</span>
-              <span class="mini-star" data-rating="4">⭐</span>
-              <span class="mini-star" data-rating="5">⭐</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sezione Bug Report -->
-      <div id="bugSection" class="form-group" style="display: none;">
-        <label style="font-weight: 600; color: #002147;">Informazioni sul problema:</label>
-        <div class="bug-info">
-          <div class="form-group">
-            <label for="bugSeverity">Gravità del problema:</label>
-            <select id="bugSeverity" class="form-control">
-              <option value="low">🟢 Bassa - Problema minore</option>
-              <option value="medium">🟡 Media - Funzionalità compromessa</option>
-              <option value="high">🔴 Alta - Blocca l'utilizzo</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="bugSteps">Passi per riprodurre il problema:</label>
-            <textarea id="bugSteps" class="form-control" rows="3" placeholder="1. Ho cliccato su...
-2. Ho inserito...
-3. È apparso l'errore..."></textarea>
-          </div>
-        </div>
-      </div>
-
-      <!-- Messaggio principale -->
-      <div class="form-group">
-        <label for="feedbackMessage" style="font-weight: 600; color: #002147;">Il tuo messaggio:</label>
-        <textarea id="feedbackMessage" class="form-control" rows="5" placeholder="Raccontaci la tua esperienza, i tuoi suggerimenti o segnalaci eventuali problemi..."></textarea>
-      </div>
-
-      <!-- Informazioni contatto (opzionali) -->
-      <div class="form-group">
-        <label style="font-weight: 600; color: #002147;">Contatti (opzionale - per ricevere aggiornamenti):</label>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <input type="email" id="feedbackEmail" class="form-control" placeholder="La tua email">
-          <input type="text" id="feedbackPhone" class="form-control" placeholder="Telefono">
-        </div>
-      </div>
-
-      <!-- Consenso per contatto -->
-      <div class="form-group">
-        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
-          <input type="checkbox" id="contactConsent">
-          Acconsento ad essere contattato per aggiornamenti su questo feedback
-        </label>
-      </div>
-
-      <!-- Informazioni tecniche automatiche -->
-      <div class="tech-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px;">
-        <h4 style="color: #002147; font-size: 0.9rem; margin-bottom: 10px;">📊 Informazioni Tecniche (raccolte automaticamente)</h4>
-        <div id="techDetails" style="font-size: 0.8rem; color: #6c757d;"></div>
-      </div>
-    </div>
-    
-    <div class="modal-footer">
-      <button type="button" onclick="closeFeedbackModal()" class="btn-secondary">
-        ❌ Annulla
-      </button>
-      <button type="button" onclick="submitFeedback()" class="btn-primary" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
-        📤 Invia Feedback
       </button>
     </div>
   </div>
