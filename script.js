@@ -300,10 +300,87 @@ const FirebaseService = {
   }
 };
 
-// Variabili globali - Firebase-only
+// 🔥 SISTEMA FIREBASE-ONLY - Variabili globali
 let loggedInUser = null;
-let users = [];
-let abbonamenti = [];
+let users = []; // Cache locale per performance
+let abbonamenti = []; // Cache locale per performance
+
+// 🚀 FIREBASE-ONLY HELPER FUNCTIONS
+const FirebaseOnlyService = {
+  // --- UTENTI ---
+  async loadUsers() {
+    try {
+      const snapshot = await db.collection('users').get();
+      users = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+      console.log(`✅ Caricati ${users.length} utenti da Firebase`);
+      return users;
+    } catch (error) {
+      console.error('❌ Errore caricamento utenti:', error);
+      return [];
+    }
+  },
+
+  async saveUser(userData) {
+    try {
+      if (userData.uid) {
+        await db.collection('users').doc(userData.uid).set(userData, { merge: true });
+      } else {
+        const docRef = await db.collection('users').add(userData);
+        userData.uid = docRef.id;
+      }
+      await this.loadUsers(); // Ricarica cache
+      return userData;
+    } catch (error) {
+      console.error('❌ Errore salvataggio utente:', error);
+      throw error;
+    }
+  },
+
+  // --- ABBONAMENTI ---
+  async loadAbbonamenti() {
+    try {
+      const snapshot = await db.collection('abbonamenti').get();
+      abbonamenti = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`✅ Caricati ${abbonamenti.length} abbonamenti da Firebase`);
+      return abbonamenti;
+    } catch (error) {
+      console.error('❌ Errore caricamento abbonamenti:', error);
+      return [];
+    }
+  },
+
+  async saveAbbonamento(abbonamentoData) {
+    try {
+      if (abbonamentoData.id) {
+        await db.collection('abbonamenti').doc(abbonamentoData.id).set({
+          ...abbonamentoData,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } else {
+        const docRef = await db.collection('abbonamenti').add({
+          ...abbonamentoData,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        abbonamentoData.id = docRef.id;
+      }
+      await this.loadAbbonamenti(); // Ricarica cache
+      return abbonamentoData;
+    } catch (error) {
+      console.error('❌ Errore salvataggio abbonamento:', error);
+      throw error;
+    }
+  },
+
+  async deleteAbbonamento(abbonamentoId) {
+    try {
+      await db.collection('abbonamenti').doc(abbonamentoId).delete();
+      await this.loadAbbonamenti(); // Ricarica cache
+    } catch (error) {
+      console.error('❌ Errore eliminazione abbonamento:', error);
+      throw error;
+    }
+  }
+};
 
 // 🔥 Firebase Authentication Setup  
 // auth è già dichiarato globalmente sopra
@@ -332,8 +409,13 @@ function initFirebaseAuth() {
             ...userDoc.data()
           };
           console.log('👤 Profilo utente caricato:', loggedInUser);
+          
+          // 🔥 FIREBASE-ONLY: Carica tutti i dati da Firebase
+          await FirebaseOnlyService.loadUsers();
+          await FirebaseOnlyService.loadAbbonamenti();
+          
           updateUIAfterLogin();
-          loadAbbonamenti(); // Carica abbonamenti dopo login
+          loadHomeListings(); // Aggiorna UI dopo caricamento dati
         }
       } catch (error) {
         console.error('❌ Errore caricamento profilo:', error);
@@ -359,17 +441,8 @@ async function loadAbbonamenti() {
   try {
     console.log('📦 Caricamento abbonamenti da Firebase...');
     
-    const snapshot = await db.collection('abbonamenti').get();
-    abbonamenti = [];
-    
-    snapshot.forEach((doc) => {
-      abbonamenti.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-    
-    console.log(`✅ Caricati ${abbonamenti.length} abbonamenti da Firebase`);
+    // 🔥 Usa il nuovo sistema Firebase-only
+    await FirebaseOnlyService.loadAbbonamenti();
     loadHomeListings(); // Aggiorna UI home
     
   } catch (error) {
@@ -1675,7 +1748,9 @@ async function creaAbbonamentoDopoPopopup(telefono) {
     
     console.log('✅ Abbonamento salvato con ID:', docRef.id);
     
-    // Aggiorna array locale con l'ID di Firebase
+    // 🔥 FIREBASE-ONLY: Ricarica da Firebase invece di aggiornare array locale
+    await FirebaseOnlyService.loadAbbonamenti();
+    
     const abbonamentoConId = {
       ...nuovoAbbonamento,
       id: docRef.id,
@@ -1686,8 +1761,6 @@ async function creaAbbonamentoDopoPopopup(telefono) {
       utenteTelefono: telefono,
       timestamp: Date.now()
     };
-    
-    abbonamenti.push(abbonamentoConId);
     
     showToast('✅ Abbonamento messo in vendita con successo!', 'success');
     updateBookingCounter();
@@ -2456,12 +2529,8 @@ async function completaVenditaFirebase(richiestaId, abbonamentoId) {
       dataVendita: new Date()
     });
     
-    // Aggiorna array locale
-    const localIndex = abbonamenti.findIndex(a => a.id === abbonamentoId);
-    if (localIndex !== -1) {
-      abbonamenti[localIndex].disponibile = false;
-      abbonamenti[localIndex].venduto = true;
-    }
+    // 🔥 FIREBASE-ONLY: Ricarica da Firebase invece di aggiornare array locale
+    await FirebaseOnlyService.loadAbbonamenti();
     
     showToast('🎉 Vendita completata con successo! L\'abbonamento è stato rimosso dalla vendita', 'success');
     
@@ -6890,7 +6959,8 @@ class BackgroundSync {
     
     this.pendingSync = true;
     try {
-      await syncDataBidirectional();
+      // 🔥 FIREBASE-ONLY: Disabilitata sincronizzazione bidirezionale
+      // await syncDataBidirectional();
       
       // Aggiorna admin panel se aperto
       if (document.querySelector('.admin-modal')?.style.display === 'flex') {
@@ -7013,7 +7083,8 @@ async function testFirebaseSystem() {
     
     // 3. Test sync bidirezionale
     console.log('3. 🔄 Test sincronizzazione bidirezionale...');
-    await syncDataBidirectional();
+    // 🔥 FIREBASE-ONLY: Disabilitata sincronizzazione bidirezionale
+    // await syncDataBidirectional();
     console.log('✅ Sync bidirezionale completata');
     
     // 4. Test analytics
@@ -7257,8 +7328,8 @@ async function initializeAdminDemoData() {
       console.log('📝 Firebase vuoto - NESSUN demo data caricato (sistema pulito)');
       // await populateFirebaseWithDemoData(); // DISABILITATO - nessun demo data
     } else {
-      console.log('✅ Dati Firebase già presenti, sincronizzazione con localStorage...');
-      await syncFirebaseToLocalStorage();
+      console.log('✅ Dati Firebase già presenti, caricamento diretto da Firebase...');
+      // 🔥 FIREBASE-ONLY: Nessuna sincronizzazione localStorage necessaria
     }
     
   } catch (error) {
@@ -7400,7 +7471,7 @@ async function populateFirebaseWithDemoData() {
     console.log('🎉 Dati demo Firebase popolati con successo!');
     
     // Ora sincronizza con localStorage
-    await syncFirebaseToLocalStorage();
+    // 🔥 FIREBASE-ONLY: Nessuna sincronizzazione localStorage necessaria
     
   } catch (error) {
     console.error('❌ Errore popolamento Firebase:', error);
@@ -7408,61 +7479,7 @@ async function populateFirebaseWithDemoData() {
   }
 }
 
-// Sincronizza dati da Firebase a localStorage
-async function syncFirebaseToLocalStorage() {
-  try {
-    console.log('🔄 Sincronizzazione Firebase -> localStorage...');
-    
-    // Sync feedback
-    const feedbackSnapshot = await db.collection('feedback').get();
-    const feedbacks = [];
-    feedbackSnapshot.forEach(doc => {
-      const data = doc.data();
-      feedbacks.push({
-        id: doc.id,
-        ...data,
-        timestamp: data.timestamp?.toMillis() || Date.now()
-      });
-    });
-    localStorage.setItem('feedbacks', JSON.stringify(feedbacks));
-    
-    // Sync users (solo per admin demo)
-    const usersSnapshot = await db.collection('users').get();
-    const users = [];
-    usersSnapshot.forEach(doc => {
-      const data = doc.data();
-      users.push({
-        ...data,
-        timestamp: data.timestamp?.toMillis() || Date.now(),
-        lastLogin: data.lastLogin?.toMillis() || Date.now()
-      });
-    });
-    localStorage.setItem('users', JSON.stringify(users));
-    
-    // Sync abbonamenti
-    const abbSnapshot = await db.collection('abbonamenti').get();
-    const abbonamenti = [];
-    abbSnapshot.forEach(doc => {
-      const data = doc.data();
-      abbonamenti.push({
-        id: doc.id,
-        ...data,
-        timestamp: data.timestamp?.toMillis() || Date.now()
-      });
-    });
-    localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
-    
-    console.log('✅ Sincronizzazione completata:', {
-      feedback: feedbacks.length,
-      users: users.length,
-      abbonamenti: abbonamenti.length
-    });
-    
-  } catch (error) {
-    console.error('❌ Errore sincronizzazione:', error);
-    throw error;
-  }
-}
+// 🗑️ FIREBASE-ONLY: Funzione syncFirebaseToLocalStorage() eliminata - non più necessaria
 
 // Fallback per localStorage se Firebase non disponibile  
 function initializeLocalStorageFallback() {
