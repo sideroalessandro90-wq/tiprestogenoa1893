@@ -6838,6 +6838,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize connection status
   updateConnectionStatus();
   
+  // 📱 Initialize mobile optimizations
+  initMobileOptimizations();
+  initMobilePerformance();
+  initMobileEventHandlers();
+  
   console.log('🔴⚪ Mobile optimizations initialized for Ti Presto Genoa 1893');
 });
 
@@ -8895,7 +8900,218 @@ function updateSystemStatus() {
   }
 }
 
-// 📦 Carica abbonamenti solo quando richiesto (controllo manuale)
+// � Mobile Optimization Functions
+function initMobileOptimizations() {
+  // Fix viewport height issue on mobile browsers
+  function setVHProperty() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  }
+  
+  setVHProperty();
+  window.addEventListener('resize', setVHProperty);
+  window.addEventListener('orientationchange', () => {
+    setTimeout(setVHProperty, 100);
+  });
+  
+  // Improve touch scrolling
+  if ('ontouchstart' in window) {
+    document.body.classList.add('touch-device');
+    
+    // Prevent double-tap zoom on buttons
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (event) {
+      const now = (new Date()).getTime();
+      if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, false);
+    
+    // Improve modal scrolling on touch devices
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+      modal.addEventListener('touchmove', function(e) {
+        if (e.target === modal) {
+          e.preventDefault();
+        }
+      });
+    });
+  }
+  
+  // Auto-hide address bar on mobile
+  if (window.innerHeight < window.innerWidth && window.innerHeight < 500) {
+    setTimeout(() => {
+      window.scrollTo(0, 1);
+    }, 100);
+  }
+  
+  // Optimize keyboard handling for forms
+  const inputs = document.querySelectorAll('input, textarea, select');
+  inputs.forEach(input => {
+    input.addEventListener('focus', function() {
+      if (window.innerWidth <= 768) {
+        setTimeout(() => {
+          this.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          });
+        }, 300);
+      }
+    });
+  });
+  
+  // Improve modal handling on mobile
+  function optimizeModalsForMobile() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            if (modal.style.display === 'flex') {
+              document.body.style.overflow = 'hidden';
+              if (window.innerWidth <= 768) {
+                modal.scrollTo(0, 0);
+              }
+            } else {
+              document.body.style.overflow = '';
+            }
+          }
+        });
+      });
+      
+      observer.observe(modal, { 
+        attributes: true, 
+        attributeFilter: ['style'] 
+      });
+    });
+  }
+  
+  optimizeModalsForMobile();
+  
+  // Improve navigation on mobile
+  function optimizeMobileNavigation() {
+    const nav = document.querySelector('nav');
+    if (nav && window.innerWidth <= 768) {
+      let lastScrollY = window.scrollY;
+      
+      window.addEventListener('scroll', () => {
+        const currentScrollY = window.scrollY;
+        
+        if (currentScrollY > lastScrollY && currentScrollY > 100) {
+          nav.style.transform = 'translateY(-100%)';
+        } else {
+          nav.style.transform = 'translateY(0)';
+        }
+        
+        lastScrollY = currentScrollY;
+      });
+      
+      nav.style.transition = 'transform 0.3s ease-in-out';
+    }
+  }
+  
+  if (window.innerWidth <= 768) {
+    optimizeMobileNavigation();
+  }
+  
+  console.log('📱 Mobile optimizations initialized');
+}
+
+// 🚀 Performance optimizations for mobile
+function initMobilePerformance() {
+  // Lazy load images
+  const images = document.querySelectorAll('img[data-src]');
+  const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        img.src = img.dataset.src;
+        img.removeAttribute('data-src');
+        observer.unobserve(img);
+      }
+    });
+  });
+  
+  images.forEach(img => imageObserver.observe(img));
+  
+  // Optimize table scrolling on mobile
+  const tableContainers = document.querySelectorAll('.table-container');
+  tableContainers.forEach(container => {
+    if (window.innerWidth <= 768) {
+      container.style.scrollBehavior = 'smooth';
+      container.style.webkitOverflowScrolling = 'touch';
+    }
+  });
+  
+  // Debounce resize events
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      // Update mobile optimizations on resize
+      if (window.innerWidth <= 768) {
+        document.body.classList.add('mobile-view');
+      } else {
+        document.body.classList.remove('mobile-view');
+      }
+    }, 150);
+  });
+  
+  // Initial mobile class
+  if (window.innerWidth <= 768) {
+    document.body.classList.add('mobile-view');
+  }
+}
+
+// 📱 Mobile-specific event handlers
+function initMobileEventHandlers() {
+  // Improve button feedback on touch
+  const buttons = document.querySelectorAll('button, .btn');
+  buttons.forEach(button => {
+    button.addEventListener('touchstart', function() {
+      this.style.transform = 'scale(0.95)';
+    });
+    
+    button.addEventListener('touchend', function() {
+      this.style.transform = '';
+    });
+    
+    button.addEventListener('touchcancel', function() {
+      this.style.transform = '';
+    });
+  });
+  
+  // Improve modal close on mobile
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    modal.addEventListener('touchstart', function(e) {
+      if (e.target === modal) {
+        const startY = e.touches[0].clientY;
+        const startTime = Date.now();
+        
+        const handleTouchEnd = (endEvent) => {
+          const endY = endEvent.changedTouches[0].clientY;
+          const endTime = Date.now();
+          const deltaY = endY - startY;
+          const deltaTime = endTime - startTime;
+          
+          // Close modal if swipe down quickly
+          if (deltaY > 100 && deltaTime < 300) {
+            modal.style.display = 'none';
+          }
+          
+          modal.removeEventListener('touchend', handleTouchEnd);
+        };
+        
+        modal.addEventListener('touchend', handleTouchEnd);
+      }
+    });
+  });
+}
+
+// �📦 Carica abbonamenti solo quando richiesto (controllo manuale)
 async function loadAbbonamentiManual() {
   if (!db) {
     console.log('❌ Firebase non disponibile per caricamento abbonamenti');
