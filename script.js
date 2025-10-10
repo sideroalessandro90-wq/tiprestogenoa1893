@@ -4313,13 +4313,13 @@ document.addEventListener('DOMContentLoaded', function() {
   // 🔥 Inizializza Firebase Auth
   initFirebaseAuth();
   
-  // 📦 Carica abbonamenti iniziali (lettura pubblica)
-  setTimeout(() => {
-    if (abbonamenti.length === 0) {
-      console.log('🔄 Caricamento abbonamenti iniziale...');
-      loadAbbonamenti();
-    }
-  }, 2000); // Aspetta che Firebase Auth si inizializzi
+  // DISABILITATO: Carica abbonamenti iniziali (causava ricreazione)
+  // setTimeout(() => {
+  //   if (abbonamenti.length === 0) {
+  //     console.log('🔄 Caricamento abbonamenti iniziale...');
+  //     loadAbbonamenti();
+  //   }
+  // }, 2000); // Aspetta che Firebase Auth si inizializzi
   
   const chatInput = document.getElementById('chatInput');
   if (chatInput) {
@@ -6828,12 +6828,12 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize mobile modals
   initializeMobileModals();
   
-  // Initialize admin demo data (async)
-  initializeAdminDemoData().then(() => {
-    console.log('🔥 Dati Firebase/localStorage sincronizzati');
-  }).catch(error => {
-    console.error('❌ Errore inizializzazione dati:', error);
-  });
+  // DISABILITATO: Initialize admin demo data (async) - causava ricreazione abbonamenti
+  // initializeAdminDemoData().then(() => {
+  //   console.log('🔥 Dati Firebase/localStorage sincronizzati');
+  // }).catch(error => {
+  //   console.error('❌ Errore inizializzazione dati:', error);
+  // });
   
   // Initialize connection status
   updateConnectionStatus();
@@ -8892,5 +8892,42 @@ function updateSystemStatus() {
     
   } catch (error) {
     console.error('❌ Errore aggiornamento stato sistema:', error);
+  }
+}
+
+// 📦 Carica abbonamenti solo quando richiesto (controllo manuale)
+async function loadAbbonamentiManual() {
+  if (!db) {
+    console.log('❌ Firebase non disponibile per caricamento abbonamenti');
+    showToast('Firebase non disponibile', 'error');
+    return;
+  }
+  
+  try {
+    console.log('📦 Caricamento manuale abbonamenti da Firebase...');
+    
+    const snapshot = await db.collection('abbonamenti').get();
+    abbonamenti = [];
+    
+    snapshot.forEach((doc) => {
+      abbonamenti.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    // Aggiorna localStorage
+    localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
+    
+    // Aggiorna UI
+    loadHomeListings();
+    updateSystemStatus();
+    
+    console.log(`✅ Abbonamenti caricati manualmente: ${abbonamenti.length}`);
+    showToast(`✅ Caricati ${abbonamenti.length} abbonamenti`, 'success');
+    
+  } catch (error) {
+    console.error('❌ Errore caricamento manuale abbonamenti:', error);
+    showToast('❌ Errore caricamento abbonamenti', 'error');
   }
 }

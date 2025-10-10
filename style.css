@@ -9911,6 +9911,15 @@ nav button[onclick="openFeedbackModal()"]:hover {
   transform: translateY(-2px);
 }
 
+.control-btn.load {
+  border-color: #28a745;
+}
+
+.control-btn.load:hover {
+  border-color: #1e7e34;
+  box-shadow: 0 5px 15px rgba(40, 167, 69, 0.2);
+}
+
 .control-btn.sync {
   border-color: #007bff;
 }
