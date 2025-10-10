@@ -272,30 +272,196 @@
   </div>
 </section>
 
-<!-- Sezioni principali -->
+<!-- Homepage Premium - Sezione Principale -->
 <section class="section active" id="home">
-  <h2>Abbonamenti in Vendita</h2>
-  <div id="homeListings">
-    <div class="home-listing-item">
-      <div class="match-teams-display">
-        <div class="team-section">
-          <img src="img/genoa.png" alt="Logo Genoa" class="team-logo">
-          <span class="team-name">GENOA</span>
-        </div>
-        <div class="vs-separator">VS</div>
-        <div class="team-section">
-          <img src="img/parma.png" alt="Logo Parma" class="team-logo">
-          <span class="team-name">PARMA</span>
-        </div>
+  <!-- Hero Header Premium -->
+  <div class="homepage-hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="hero-badge-icon">🎫</span>
+        <span class="hero-badge-text">MARKETPLACE UFFICIALE</span>
       </div>
-      <div class="match-details">
-        <div class="match-venue">🏟️ Stadio Luigi Ferraris</div>
-        <div class="match-datetime">📅 <strong>Domenica 15 dicembre 2025</strong> - ⏰ <strong>ore 15:00</strong></div>
+      <h1 class="hero-title">
+        <span class="title-primary">Abbonamenti</span>
+        <span class="title-accent">in Vendita</span>
+      </h1>
+      <p class="hero-subtitle">
+        Trova l'abbonamento perfetto per supportare il Genoa al Luigi Ferraris
+      </p>
+    </div>
+    <div class="hero-decoration">
+      <div class="decoration-circle circle-1"></div>
+      <div class="decoration-circle circle-2"></div>
+      <div class="decoration-circle circle-3"></div>
+    </div>
+  </div>
+
+  <!-- Stats Cards Premium -->
+  <div class="homepage-stats">
+    <div class="stat-card-premium" data-aos="fade-up" data-aos-delay="100">
+      <div class="stat-icon-container">
+        <span class="stat-icon">🎫</span>
       </div>
-      <div id="matchCountdownGenoaParma" class="match-countdown"></div>
-      <div class="match-actions">
-        <button class="btn-details">Vedi dettagli</button>
-        <button type="button" class="btn-negotiate" onclick="apriTrattativa('Genoa vs Parma'); return false;">Apri trattativa</button>
+      <div class="stat-content">
+        <span class="stat-number" id="activeTicketsCount">12</span>
+        <span class="stat-label">Abbonamenti Attivi</span>
+      </div>
+    </div>
+    
+    <div class="stat-card-premium" data-aos="fade-up" data-aos-delay="200">
+      <div class="stat-icon-container">
+        <span class="stat-icon">👥</span>
+      </div>
+      <div class="stat-content">
+        <span class="stat-number" id="activeUsersCount">247</span>
+        <span class="stat-label">Tifosi Attivi</span>
+      </div>
+    </div>
+    
+    <div class="stat-card-premium" data-aos="fade-up" data-aos-delay="300">
+      <div class="stat-icon-container">
+        <span class="stat-icon">🤝</span>
+      </div>
+      <div class="stat-content">
+        <span class="stat-number" id="completedDealsCount">89</span>
+        <span class="stat-label">Scambi Completati</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Listings Container Premium -->
+  <div class="homepage-listings-container">
+    <div class="listings-header">
+      <h2 class="listings-title">
+        <span class="title-icon">⚡</span>
+        <span>Offerte in Evidenza</span>
+      </h2>
+      <div class="listings-filter">
+        <button class="filter-btn active" data-filter="all">Tutte</button>
+        <button class="filter-btn" data-filter="nord">Gradinata Nord</button>
+        <button class="filter-btn" data-filter="distinti">Distinti</button>
+        <button class="filter-btn" data-filter="tribuna">Tribuna</button>
+      </div>
+    </div>
+
+    <div id="homeListings" class="premium-listings-grid">
+      <!-- Listing Premium Card -->
+      <div class="premium-listing-card" data-aos="fade-up" data-aos-delay="100">
+        <div class="listing-card-header">
+          <div class="match-info-premium">
+            <div class="teams-display-premium">
+              <div class="team-section-premium home-team">
+                <div class="team-logo-wrapper">
+                  <img src="img/genoa.png" alt="Logo Genoa CFC" class="team-logo-premium">
+                  <div class="logo-glow-effect"></div>
+                </div>
+                <div class="team-details-premium">
+                  <span class="team-name-premium">GENOA</span>
+                  <span class="team-subtitle-premium">CFC</span>
+                </div>
+              </div>
+              
+              <div class="vs-section-premium">
+                <div class="vs-badge-premium">
+                  <span class="vs-text-premium">VS</span>
+                </div>
+              </div>
+              
+              <div class="team-section-premium away-team">
+                <div class="team-logo-wrapper">
+                  <img src="img/parma.png" alt="Logo Parma FC" class="team-logo-premium">
+                  <div class="logo-glow-effect"></div>
+                </div>
+                <div class="team-details-premium">
+                  <span class="team-name-premium">PARMA</span>
+                  <span class="team-subtitle-premium">FC</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="listing-status-badge">
+            <span class="status-dot"></span>
+            <span class="status-text">Disponibile</span>
+          </div>
+        </div>
+
+        <div class="listing-card-body">
+          <div class="match-info-details">
+            <div class="info-row">
+              <span class="info-icon">🏟️</span>
+              <span class="info-text">Stadio Luigi Ferraris</span>
+            </div>
+            <div class="info-row">
+              <span class="info-icon">📅</span>
+              <span class="info-text">Domenica 15 Dicembre 2025</span>
+            </div>
+            <div class="info-row">
+              <span class="info-icon">⏰</span>
+              <span class="info-text">ore 15:00</span>
+            </div>
+            <div class="info-row">
+              <span class="info-icon">🎫</span>
+              <span class="info-text">Settore: <strong>Gradinata Nord</strong></span>
+            </div>
+          </div>
+
+          <div class="countdown-premium-card">
+            <div class="countdown-header">
+              <span class="countdown-icon">⏱️</span>
+              <span class="countdown-label">Tempo Rimanente</span>
+            </div>
+            <div id="matchCountdownGenoaParma" class="countdown-display-premium">
+              <!-- Countdown JavaScript -->
+            </div>
+          </div>
+        </div>
+
+        <div class="listing-card-footer">
+          <div class="price-section">
+            <span class="price-label">Prezzo Settore</span>
+            <span class="price-value">€ 25,00</span>
+          </div>
+          <div class="action-buttons-premium">
+            <button class="btn-premium btn-secondary-premium">
+              <span class="btn-icon">👁️</span>
+              <span>Dettagli</span>
+            </button>
+            <button type="button" class="btn-premium btn-primary-premium" onclick="apriTrattativa('Genoa vs Parma'); return false;">
+              <span class="btn-icon">💬</span>
+              <span>Tratta</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Card Glow Effect -->
+        <div class="card-glow-effect"></div>
+      </div>
+
+      <!-- Placeholder per altri abbonamenti dinamici -->
+      <div class="empty-state-premium" id="emptyListingsState" style="display: none;">
+        <div class="empty-icon">🎫</div>
+        <h3 class="empty-title">Nessun abbonamento disponibile</h3>
+        <p class="empty-text">Al momento non ci sono abbonamenti in vendita per i filtri selezionati.</p>
+        <button class="btn-premium btn-primary-premium" onclick="showSection('booking')">
+          <span class="btn-icon">➕</span>
+          <span>Metti in Vendita</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Call to Action Premium -->
+    <div class="homepage-cta" data-aos="fade-up" data-aos-delay="400">
+      <div class="cta-content">
+        <h3 class="cta-title">Hai un abbonamento da vendere?</h3>
+        <p class="cta-subtitle">Unisciti alla community di tifosi del Genoa e condividi la passione rossoblù</p>
+        <button class="cta-button" onclick="showSection('booking')">
+          <span class="cta-button-icon">🚀</span>
+          <span>Inizia a Vendere</span>
+        </button>
+      </div>
+      <div class="cta-decoration">
+        <div class="genoa-pattern"></div>
       </div>
     </div>
   </div>

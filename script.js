@@ -1118,6 +1118,172 @@ function formatDate(dateString){
   return date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// ===============================
+// HOMEPAGE PREMIUM FUNCTIONS
+// ===============================
+
+// Inizializzazione Homepage Premium
+function initializeHomepagePremium() {
+  initializeCounters();
+  initializeFilters();
+  initializePremiumCountdown();
+  initializeScrollAnimations();
+}
+
+// Contatori animati per le statistiche
+function initializeCounters() {
+  const counters = document.querySelectorAll('.stat-number');
+  
+  const observerOptions = {
+    threshold: 0.5,
+    rootMargin: '0px 0px -100px 0px'
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const counter = entry.target;
+        const finalValue = parseInt(counter.getAttribute('data-count') || counter.textContent);
+        animateCounter(counter, finalValue);
+        observer.unobserve(counter);
+      }
+    });
+  }, observerOptions);
+
+  counters.forEach(counter => {
+    observer.observe(counter);
+  });
+}
+
+function animateCounter(element, finalValue) {
+  let currentValue = 0;
+  const increment = finalValue / 30;
+  const duration = 1500;
+  const stepTime = duration / 30;
+
+  const timer = setInterval(() => {
+    currentValue += increment;
+    if (currentValue >= finalValue) {
+      element.textContent = finalValue;
+      clearInterval(timer);
+    } else {
+      element.textContent = Math.floor(currentValue);
+    }
+  }, stepTime);
+}
+
+// Sistema di filtri per gli annunci
+function initializeFilters() {
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  const listingCards = document.querySelectorAll('.premium-listing-card');
+
+  filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      // Rimuovi classe active da tutti i bottoni
+      filterButtons.forEach(btn => btn.classList.remove('active'));
+      // Aggiungi classe active al bottone cliccato
+      button.classList.add('active');
+
+      const filterValue = button.getAttribute('data-filter');
+
+      // Filtra le card
+      listingCards.forEach(card => {
+        if (filterValue === 'tutti' || card.getAttribute('data-category') === filterValue) {
+          card.style.display = 'block';
+          card.style.animation = 'fadeIn 0.5s ease';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+  });
+}
+
+// Countdown premium per le partite
+function initializePremiumCountdown() {
+  const countdownElements = document.querySelectorAll('.countdown-display-premium');
+  
+  countdownElements.forEach(element => {
+    const matchDate = new Date(element.getAttribute('data-match-date'));
+    
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const distance = matchDate.getTime() - now;
+
+      if (distance > 0) {
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        element.innerHTML = `
+          <div style="display: flex; justify-content: center; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <div style="text-align: center; min-width: 40px;">
+              <div style="font-size: 1.2em; font-weight: 900;">${days}</div>
+              <div style="font-size: 0.7em; opacity: 0.8;">giorni</div>
+            </div>
+            <div style="font-size: 1.2em; opacity: 0.6;">:</div>
+            <div style="text-align: center; min-width: 40px;">
+              <div style="font-size: 1.2em; font-weight: 900;">${hours.toString().padStart(2, '0')}</div>
+              <div style="font-size: 0.7em; opacity: 0.8;">ore</div>
+            </div>
+            <div style="font-size: 1.2em; opacity: 0.6;">:</div>
+            <div style="text-align: center; min-width: 40px;">
+              <div style="font-size: 1.2em; font-weight: 900;">${minutes.toString().padStart(2, '0')}</div>
+              <div style="font-size: 0.7em; opacity: 0.8;">min</div>
+            </div>
+          </div>
+        `;
+      } else {
+        element.innerHTML = '<div style="color: #28a745; font-weight: 700; font-size: 0.9em;">⚽ PARTITA IN CORSO</div>';
+      }
+    };
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  });
+}
+
+// Animazioni di scroll per gli elementi
+function initializeScrollAnimations() {
+  const animatedElements = document.querySelectorAll('[data-aos]');
+  
+  const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const element = entry.target;
+        const animationType = element.getAttribute('data-aos');
+        
+        element.style.opacity = '1';
+        element.style.transform = 'translateY(0)';
+        
+        if (animationType === 'fade-up') {
+          element.style.animation = 'fadeUp 0.8s ease-out';
+        } else if (animationType === 'fade-left') {
+          element.style.animation = 'fadeLeft 0.8s ease-out';
+        } else if (animationType === 'fade-right') {
+          element.style.animation = 'fadeRight 0.8s ease-out';
+        } else if (animationType === 'zoom-in') {
+          element.style.animation = 'zoomIn 0.8s ease-out';
+        }
+        
+        observer.unobserve(element);
+      }
+    });
+  }, observerOptions);
+
+  animatedElements.forEach(element => {
+    element.style.opacity = '0';
+    element.style.transform = 'translateY(20px)';
+    observer.observe(element);
+  });
+}
+
 // --- Vendita abbonamento ---
 async function prenotaAbbonamento(event) {
   event.preventDefault();
@@ -3510,6 +3676,11 @@ function initApp(){
   populateMatchSelect();
   populateSectorSelect();
   displayNextMatch();
+  
+  // Inizializza homepage premium
+  setTimeout(() => {
+    initializeHomepagePremium();
+  }, 100);
 }
 
 // Avvio appena il DOM è pronto
