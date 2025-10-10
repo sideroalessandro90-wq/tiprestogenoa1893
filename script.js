@@ -305,6 +305,69 @@ let loggedInUser = null;
 let users = []; // Cache locale per performance
 let abbonamenti = []; // Cache locale per performance
 
+// 🚫 OVERRIDE LOCALSTORAGE PER FIREBASE-ONLY
+// Intercetta e sostituisce tutte le chiamate localStorage
+const originalLocalStorage = window.localStorage;
+window.localStorage = {
+  setItem: function(key, value) {
+    console.log(`🔄 localStorage.setItem('${key}') intercettato - usando Firebase`);
+    // Non salva più in localStorage, usa solo Firebase
+    if (key === 'cookieConsent') {
+      // Solo i cookie consent vengono salvati localmente
+      originalLocalStorage.setItem(key, value);
+    } else {
+      console.log(`⚠️ localStorage.setItem('${key}') ignorato - Firebase-only attivo`);
+    }
+  },
+  
+  getItem: function(key) {
+    console.log(`🔄 localStorage.getItem('${key}') intercettato - usando Firebase cache`);
+    
+    // Restituisce dati dalla cache Firebase
+    switch (key) {
+      case 'abbonamenti':
+        return JSON.stringify(abbonamenti);
+      case 'users':
+        return JSON.stringify(users);
+      case 'feedbacks':
+        // I feedback vengono caricati dinamicamente da Firebase
+        return '[]';
+      case 'userReadMessages':
+        return '{}';
+      case 'user_analytics':
+        return '[]';
+      case 'user_sessions':
+        return '[]';
+      case 'adminSettings':
+        return '{}';
+      case 'cookieConsent':
+        // Solo i cookie consent vengono letti da localStorage
+        return originalLocalStorage.getItem(key);
+      default:
+        console.log(`⚠️ localStorage.getItem('${key}') non gestito - restituisco []`);
+        return '[]';
+    }
+  },
+  
+  removeItem: function(key) {
+    console.log(`🔄 localStorage.removeItem('${key}') intercettato`);
+    if (key === 'cookieConsent') {
+      originalLocalStorage.removeItem(key);
+    } else {
+      console.log(`⚠️ localStorage.removeItem('${key}') ignorato - Firebase-only attivo`);
+    }
+  },
+  
+  clear: function() {
+    console.log('🔄 localStorage.clear() intercettato - conservo solo cookieConsent');
+    const consent = originalLocalStorage.getItem('cookieConsent');
+    originalLocalStorage.clear();
+    if (consent) {
+      originalLocalStorage.setItem('cookieConsent', consent);
+    }
+  }
+};
+
 // � FIREBASE-ONLY SERVICE COMPLETO
 const FirebaseOnlyService = {
   // --- UTENTI ---
@@ -497,6 +560,46 @@ const FirebaseOnlyService = {
         feedbackNuovi: 0,
         timestamp: Date.now()
       };
+    }
+  },
+
+  // 🔥 HELPER PER ELIMINAZIONE LOCALSTORAGE
+  // Sostituisce localStorage.setItem con operazioni Firebase
+  async replaceLocalStorageSet(key, data) {
+    try {
+      switch (key) {
+        case 'abbonamenti':
+          console.log('🔄 localStorage.setItem abbonamenti sostituito con Firebase reload');
+          await this.loadAbbonamenti();
+          break;
+        case 'users':
+          console.log('🔄 localStorage.setItem users sostituito con Firebase reload');
+          await this.loadUsers();
+          break;
+        case 'feedbacks':
+          console.log('🔄 localStorage.setItem feedbacks sostituito con Firebase reload');
+          await this.loadFeedbacks();
+          break;
+        default:
+          console.log(`⚠️ localStorage.setItem('${key}') ignorato - Firebase-only attivo`);
+      }
+    } catch (error) {
+      console.error(`❌ Errore sostituzione localStorage.setItem('${key}'):`, error);
+    }
+  },
+
+  // Sostituisce localStorage.getItem con dati Firebase
+  getFromFirebaseCache(key) {
+    switch (key) {
+      case 'abbonamenti':
+        return JSON.stringify(abbonamenti);
+      case 'users':
+        return JSON.stringify(users);
+      case 'feedbacks':
+        return JSON.stringify([]);  // Caricato dinamicamente
+      default:
+        console.log(`⚠️ localStorage.getItem('${key}') ignorato - Firebase-only attivo`);
+        return '[]';
     }
   }
 };
