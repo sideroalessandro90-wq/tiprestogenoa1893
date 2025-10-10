@@ -672,10 +672,56 @@ async function loadAbbonamenti() {
   }
 }
 
+// 🔥 VERIFICA SINCRONIZZAZIONE DATI FIREBASE
+async function verifyFirebaseDataSync() {
+  try {
+    console.log('🔍 Verifica sincronizzazione dati Firebase...');
+    
+    const stats = await FirebaseOnlyService.getAdminStats();
+    const cacheUsers = users.length;
+    const cacheAbbonamenti = abbonamenti.length;
+    
+    const report = {
+      firebase: {
+        users: stats.totalUsers,
+        abbonamenti: stats.totalAbbonamenti,
+        abbonamentiDisponibili: stats.abbonamentiDisponibili,
+        feedback: stats.totalFeedback
+      },
+      cache: {
+        users: cacheUsers,
+        abbonamenti: cacheAbbonamenti
+      },
+      sincronizzato: {
+        users: stats.totalUsers === cacheUsers,
+        abbonamenti: stats.totalAbbonamenti === cacheAbbonamenti
+      }
+    };
+    
+    console.log('📊 Report sincronizzazione:', report);
+    
+    if (!report.sincronizzato.users || !report.sincronizzato.abbonamenti) {
+      console.warn('⚠️ Dati cache non sincronizzati con Firebase!');
+      // Ricarica automaticamente
+      await FirebaseOnlyService.loadUsers();
+      await FirebaseOnlyService.loadAbbonamenti();
+      console.log('🔄 Cache ricaricata da Firebase');
+    }
+    
+    return report;
+  } catch (error) {
+    console.error('❌ Errore verifica sincronizzazione:', error);
+    return null;
+  }
+}
+
 // 🔥 AGGIORNA ADMIN PANEL CON DATI FIREBASE REALI
 async function updateAdminPanelStats() {
   try {
     console.log('📊 Aggiornamento statistiche admin panel da Firebase...');
+    
+    // Verifica sincronizzazione dati prima di aggiornare
+    await verifyFirebaseDataSync();
     
     const stats = await FirebaseOnlyService.getAdminStats();
     
@@ -694,10 +740,22 @@ async function updateAdminPanelStats() {
       if (element) {
         element.textContent = value;
         console.log(`✅ ${elementId}: ${value}`);
+      } else {
+        console.warn(`⚠️ Elemento ${elementId} non trovato nel DOM`);
       }
     });
 
-    console.log('✅ Statistiche admin panel aggiornate con dati Firebase reali');
+    // Mostra informazioni dettagliate nella console
+    console.log('🎯 STATISTICHE FIREBASE REALI:', {
+      'Utenti totali': stats.totalUsers,
+      'Abbonamenti totali': stats.totalAbbonamenti,
+      'Abbonamenti disponibili': stats.abbonamentiDisponibili,
+      'Abbonamenti venduti': stats.abbonamentiVenduti,
+      'Feedback totali': stats.totalFeedback,
+      'Feedback nuovi': stats.feedbackNuovi
+    });
+
+    console.log('✅ Statistiche admin panel sincronizzate con Firebase');
     return stats;
   } catch (error) {
     console.error('❌ Errore aggiornamento statistiche:', error);
@@ -7555,8 +7613,9 @@ async function initializeAdminDemoData() {
     }
     
   } catch (error) {
-    console.error('❌ Errore inizializzazione Firebase, fallback a localStorage:', error);
-    initializeLocalStorageFallback();
+    console.error('❌ Errore inizializzazione Firebase - NESSUN fallback localStorage necessario:', error);
+    // 🔥 FIREBASE-ONLY: Non usiamo più localStorage fallback
+    // initializeLocalStorageFallback();
   }
 }
 
@@ -7703,8 +7762,8 @@ async function populateFirebaseWithDemoData() {
 
 // 🗑️ FIREBASE-ONLY: Funzione syncFirebaseToLocalStorage() eliminata - non più necessaria
 
-// Fallback per localStorage se Firebase non disponibile  
-function initializeLocalStorageFallback() {
+// 🗑️ FIREBASE-ONLY: Funzione initializeLocalStorageFallback() eliminata
+function initializeLocalStorageFallback_DISABLED() {
   try {
     console.log('📱 Inizializzazione fallback localStorage...');
     
