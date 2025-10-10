@@ -6044,11 +6044,41 @@ function testPWAInstallation() {
   return tests;
 }
 
+// Inizializza countdown partita homepage
+function initializeHomepageCountdown() {
+  const countdownEl = document.getElementById('matchCountdownGenoaParma');
+  if (!countdownEl) return;
+  
+  // Data della partita Genoa vs Parma
+  const matchDate = new Date('2025-12-15T15:00:00');
+  
+  function updateCountdown() {
+    const now = new Date();
+    const timeLeft = matchDate - now;
+    
+    if (timeLeft <= 0) {
+      countdownEl.textContent = '⚽ Partita in corso o conclusa';
+      return;
+    }
+    
+    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+    
+    countdownEl.textContent = `⏰ Mancano: ${days}g ${hours}h ${minutes}m ${seconds}s`;
+  }
+  
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+}
+
 // Inizializza i sistemi quando la pagina è caricata
 document.addEventListener('DOMContentLoaded', function() {
   // Aspetta che tutti gli script siano caricati
   setTimeout(() => {
     initializeBehavioralAnalytics();
+    initializeHomepageCountdown();
     
     // Inizializza PWA
     registerServiceWorker();

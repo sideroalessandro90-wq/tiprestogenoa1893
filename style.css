@@ -2437,6 +2437,139 @@ form {
   background: linear-gradient(90deg, #002147 0%, #c8102e 100%);
 }
 
+/* Stile per il nuovo layout delle squadre in homepage */
+.match-teams-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px 0;
+  background: rgba(0, 33, 71, 0.02);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.team-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-section .team-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 33, 71, 0.15);
+  background: #fff;
+  padding: 6px;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.team-section .team-logo:hover {
+  transform: scale(1.1);
+}
+
+.team-section .team-name {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.1em;
+  font-weight: 700;
+  color: #002147;
+  letter-spacing: 0.5px;
+}
+
+.vs-separator {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.2em;
+  font-weight: 800;
+  color: #c8102e;
+  background: linear-gradient(135deg, #c8102e 0%, #dc3545 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  padding: 8px 16px;
+  border: 2px solid #c8102e;
+  border-radius: 50%;
+  min-width: 60px;
+  text-align: center;
+}
+
+.match-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.match-venue {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1em;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.match-datetime {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.1em;
+  color: #002147;
+  font-weight: 600;
+}
+
+.match-countdown {
+  background: linear-gradient(135deg, #dc3545 0%, #c8102e 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 16px 0;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.match-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-details, .btn-negotiate {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.btn-details {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+}
+
+.btn-details:hover {
+  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  transform: translateY(-2px);
+}
+
+.btn-negotiate {
+  background: linear-gradient(135deg, #002147 0%, #c8102e 100%);
+  color: white;
+}
+
+.btn-negotiate:hover {
+  background: linear-gradient(135deg, #c8102e 0%, #002147 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(200, 16, 46, 0.4);
+}
+
 /* Header con squadre e badge */
 .listing-header {
   display: flex;

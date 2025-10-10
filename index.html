@@ -231,17 +231,26 @@
   <h2>Abbonamenti in Vendita</h2>
   <div id="homeListings">
     <div class="home-listing-item">
-      <div style="display:flex;align-items:center;gap:16px;">
-        <img src="img/genoa.png" alt="Logo Genoa" style="height:48px;">
-        <span style="font-weight:600;font-size:1.2em;">GENOA</span>
-        <span style="margin:0 8px;font-weight:bold;">VS</span>
-        <img src="img/lazio.png" alt="Logo Lazio" style="height:48px;">
-        <span style="font-weight:600;font-size:1.2em;">LAZIO</span>
+      <div class="match-teams-display">
+        <div class="team-section">
+          <img src="img/genoa.png" alt="Logo Genoa" class="team-logo">
+          <span class="team-name">GENOA</span>
+        </div>
+        <div class="vs-separator">VS</div>
+        <div class="team-section">
+          <img src="img/parma.png" alt="Logo Parma" class="team-logo">
+          <span class="team-name">PARMA</span>
+        </div>
       </div>
-      <p>Stadio Luigi Ferraris, Data: <strong>29 settembre 2025</strong>, Ore: <strong>20:45</strong></p>
-      <div id="matchCountdownGenoaLazio" style="font-size:1.1em;font-weight:500;color:#dc3545;margin:8px 0;"></div>
-      <button>Vedi dettagli</button>
-      <button type="button" onclick="apriTrattativa('Genoa vs Lazio'); return false;">Apri trattativa</button>
+      <div class="match-details">
+        <div class="match-venue">🏟️ Stadio Luigi Ferraris</div>
+        <div class="match-datetime">📅 <strong>Domenica 15 dicembre 2025</strong> - ⏰ <strong>ore 15:00</strong></div>
+      </div>
+      <div id="matchCountdownGenoaParma" class="match-countdown"></div>
+      <div class="match-actions">
+        <button class="btn-details">Vedi dettagli</button>
+        <button type="button" class="btn-negotiate" onclick="apriTrattativa('Genoa vs Parma'); return false;">Apri trattativa</button>
+      </div>
     </div>
   </div>
 </section>
