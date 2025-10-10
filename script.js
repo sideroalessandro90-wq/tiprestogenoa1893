@@ -7383,47 +7383,9 @@ async function populateFirebaseWithDemoData() {
       batch.set(userRef, userData);
     }
     
-    // 3. ABBONAMENTI REALISTICI
+    // 3. ABBONAMENTI DEMO - ARRAY SVUOTATO
     const demoAbbonamenti = [
-      {
-        utente: 'marco_genoa',
-        userEmail: 'marco.rossi@email.com',
-        matchId: 'genoa-lazio-2025',
-        matchDesc: 'Genoa - Lazio',
-        settore: 'Gradinata Nord',
-        prezzo: 35,
-        disponibile: true,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        messaggiChat: [],
-        tipo: 'vendita',
-        stato: 'attivo'
-      },
-      {
-        utente: 'andrea_1893',
-        userEmail: 'andrea.verdi@outlook.it',
-        matchId: 'genoa-inter-2025', 
-        matchDesc: 'Genoa - Inter',
-        settore: 'Tribuna Centrale',
-        prezzo: 85,
-        disponibile: false,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        messaggiChat: [],
-        tipo: 'vendita',
-        stato: 'trattativa'
-      },
-      {
-        utente: 'giulia_rossoblù',
-        userEmail: 'giulia.bianchi@gmail.com',
-        matchId: 'genoa-juventus-2025',
-        matchDesc: 'Genoa - Juventus',
-        settore: 'Gradinata Sud',
-        prezzo: 45,
-        disponibile: true,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        messaggiChat: [],
-        tipo: 'scambio',
-        stato: 'attivo'
-      }
+      // Array svuotato - nessun abbonamento demo
     ];
     
     // Aggiungi abbonamenti a Firebase
@@ -7670,90 +7632,9 @@ function initializeLocalStorageFallback() {
       localStorage.setItem('users', JSON.stringify(users));
     }
     
-    // Inizializza abbonamenti demo realistici
+    // ABBONAMENTI DEMO COMPLETAMENTE RIMOSSI
     let abbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
-    if (abbonamenti.length < 15) {
-      const currentTime = Date.now();
-      const demoAbbonamenti = [
-        {
-          id: 'GEN001',
-          utente: 'marco_genoa',
-          matchId: 'genoa-lazio-2025',
-          matchDesc: 'Genoa - Lazio',
-          settore: 'Gradinata Nord',
-          prezzo: 35,
-          disponibile: true,
-          timestamp: currentTime - 3600000, // 1 ora fa
-          messaggiChat: [],
-          tipo: 'vendita',
-          stato: 'attivo'
-        },
-        {
-          id: 'GEN003',
-          utente: 'andrea_1893',
-          matchId: 'genoa-inter-2025',
-          matchDesc: 'Genoa - Inter',
-          settore: 'Tribuna Centrale',
-          prezzo: 85,
-          disponibile: false,
-          timestamp: currentTime - 86400000, // 1 giorno fa
-          messaggiChat: [
-            { da: 'giulia_rossoblù', messaggio: 'Ancora disponibile?', timestamp: currentTime - 7200000 },
-            { da: 'andrea_1893', messaggio: 'Si, interessata?', timestamp: currentTime - 3600000 }
-          ],
-          tipo: 'vendita',
-          stato: 'trattativa'
-        },
-        {
-          id: 'GEN007',
-          utente: 'luca_grifone',
-          matchId: 'genoa-milan-2025',
-          matchDesc: 'Genoa - Milan',
-          settore: 'Distinti',
-          prezzo: 65,
-          disponibile: true,
-          timestamp: currentTime - 172800000, // 2 giorni fa
-          messaggiChat: [],
-          tipo: 'vendita',
-          stato: 'attivo'
-        },
-        {
-          id: 'GEN008',
-          utente: 'giulia_rossoblù',
-          matchId: 'genoa-juventus-2025',
-          matchDesc: 'Genoa - Juventus',
-          settore: 'Gradinata Sud',
-          prezzo: 45,
-          disponibile: true,
-          timestamp: currentTime - 259200000, // 3 giorni fa
-          messaggiChat: [],
-          tipo: 'scambio',
-          stato: 'attivo'
-        },
-        {
-          id: 'GEN012',
-          utente: 'andrea_1893',
-          matchId: 'genoa-napoli-2025',
-          matchDesc: 'Genoa - Napoli',
-          settore: 'Tribuna Laterale',
-          prezzo: 75,
-          disponibile: false,
-          timestamp: currentTime - 432000000, // 5 giorni fa
-          messaggiChat: [],
-          tipo: 'vendita',
-          stato: 'venduto'
-        }
-      ];
-      
-      // Aggiungi solo se non esistono già
-      demoAbbonamenti.forEach(nuovoAbb => {
-        if (!abbonamenti.find(a => a.id === nuovoAbb.id)) {
-          abbonamenti.push(nuovoAbb);
-        }
-      });
-      
-      localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
-    }
+    // Nessun abbonamento demo viene più inizializzato
     
     // Aggiungi GitHub Copilot come admin se non esiste
     if (!users.find(u => u.username === 'github-copilot')) {
@@ -8809,7 +8690,7 @@ async function clearAllAbbonamenti() {
       console.log('✅ Firebase abbonamenti eliminati');
     }
     
-    // 2. Pulisci localStorage
+    // 2. Pulisci localStorage abbonamenti
     localStorage.removeItem('abbonamenti');
     console.log('✅ localStorage abbonamenti eliminato');
     
@@ -8826,6 +8707,74 @@ async function clearAllAbbonamenti() {
   } catch (error) {
     console.error('❌ Errore durante la pulizia:', error);
     showToast('❌ Errore durante la pulizia degli abbonamenti', 'error');
+  }
+}
+
+// 🗑️ Funzione per svuotare completamente il sistema (SUPER ADMIN)
+async function clearAllDemoData() {
+  if (!confirm('🚨 SUPER ADMIN: Questa azione eliminerà TUTTI i dati demo (abbonamenti, users demo, analytics demo). Continuare?')) {
+    return;
+  }
+  
+  if (!confirm('🔥 ULTIMA CONFERMA: Sei sicuro di voler eliminare TUTTO? Questa azione è irreversibile!')) {
+    return;
+  }
+  
+  try {
+    console.log('🔥 Avvio pulizia completa sistema...');
+    
+    // 1. Pulisci Firebase completamente
+    if (db) {
+      const batch = db.batch();
+      
+      // Elimina tutti gli abbonamenti
+      const abbonamentiSnapshot = await db.collection('abbonamenti').get();
+      abbonamentiSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+      
+      // Elimina utenti demo (tranne admin veri)
+      const usersSnapshot = await db.collection('users').get();
+      usersSnapshot.docs.forEach(doc => {
+        const userData = doc.data();
+        // Mantieni solo admin reali
+        if (!userData.isAdmin || userData.username.includes('demo') || userData.username.includes('_')) {
+          batch.delete(doc.ref);
+        }
+      });
+      
+      // Elimina analytics demo
+      const analyticsSnapshot = await db.collection('analytics').get();
+      analyticsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+      
+      // Elimina feedback demo
+      const feedbackSnapshot = await db.collection('feedback').get();
+      feedbackSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+      
+      await batch.commit();
+      console.log('✅ Firebase completamente pulito');
+    }
+    
+    // 2. Pulisci localStorage completamente
+    localStorage.removeItem('abbonamenti');
+    localStorage.removeItem('user_analytics');
+    localStorage.removeItem('user_sessions');
+    localStorage.removeItem('users'); // Rimuovi anche users localStorage
+    console.log('✅ localStorage completamente pulito');
+    
+    // 3. Reset array globali
+    abbonamenti = [];
+    users = [];
+    analytics = [];
+    
+    // 4. Aggiorna UI
+    loadHomeListings();
+    updateSystemStatus();
+    
+    showToast('🔥 Sistema completamente pulito! Tutti i dati demo eliminati.', 'success');
+    console.log('🔥 Pulizia sistema completata');
+    
+  } catch (error) {
+    console.error('❌ Errore durante la pulizia sistema:', error);
+    showToast('❌ Errore durante la pulizia del sistema', 'error');
   }
 }
 
