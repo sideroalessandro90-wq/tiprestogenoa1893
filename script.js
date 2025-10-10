@@ -4325,6 +4325,11 @@ window.testCookieBanner = testCookieBanner;
 let userSession = {
   startTime: Date.now(),
   pageViews: [],
+  actions: [],
+  currentSection: 'home',
+  searchQueries: [],
+  clickStream: []
+};
 
 // Utility per rilevare browser
 function getBrowserName(userAgent) {
@@ -4757,25 +4762,11 @@ function trackFeedbackEvent(eventName, data = {}) {
       gtag('event', eventName, data);
     }
     
-    console.log('Feedback event tracked:', eventName, data);
+    console.log('Analytics event tracked:', eventName, data);
   } catch (error) {
     console.error('Errore tracking evento:', error);
   }
 }
-
-// ===============================
-// ANALYTICS COMPORTAMENTALI
-// ===============================
-
-// Variabili per tracking comportamentale
-let userSession = {
-  startTime: Date.now(),
-  pageViews: [],
-  actions: [],
-  currentSection: 'home',
-  searchQueries: [],
-  clickStream: []
-};
 
 // Inizializza analytics comportamentali
 function initializeBehavioralAnalytics() {
