@@ -6047,17 +6047,52 @@ function testPWAInstallation() {
 // Inizializza countdown partita homepage
 function initializeHomepageCountdown() {
   const countdownEl = document.getElementById('matchCountdownGenoaParma');
-  if (!countdownEl) return;
+  if (countdownEl) {
+    // Data della partita Genoa vs Parma
+    const matchDate = new Date('2025-12-15T15:00:00');
+    
+    function updateCountdown() {
+      const now = new Date();
+      const timeLeft = matchDate - now;
+      
+      if (timeLeft <= 0) {
+        countdownEl.textContent = '⚽ Partita in corso o conclusa';
+        return;
+      }
+      
+      const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+      
+      countdownEl.textContent = `⏰ Mancano: ${days}g ${hours}h ${minutes}m ${seconds}s`;
+    }
+    
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  }
+}
+
+// Inizializza countdown premium sovraimpressione
+function initializePremiumCountdown() {
+  const premiumCountdownEl = document.getElementById('premiumMatchCountdown');
+  if (!premiumCountdownEl) return;
   
   // Data della partita Genoa vs Parma
   const matchDate = new Date('2025-12-15T15:00:00');
   
-  function updateCountdown() {
+  function updatePremiumCountdown() {
     const now = new Date();
     const timeLeft = matchDate - now;
     
     if (timeLeft <= 0) {
-      countdownEl.textContent = '⚽ Partita in corso o conclusa';
+      premiumCountdownEl.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span>⚽</span>
+          <span>PARTITA IN CORSO</span>
+          <span>🔴⚪</span>
+        </div>
+      `;
       return;
     }
     
@@ -6066,11 +6101,28 @@ function initializeHomepageCountdown() {
     const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
     
-    countdownEl.textContent = `⏰ Mancano: ${days}g ${hours}h ${minutes}m ${seconds}s`;
+    premiumCountdownEl.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;">
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 0.9em; opacity: 0.9;">⏰</span>
+          <span style="font-weight: 900; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">MANCANO:</span>
+        </span>
+        <div style="display: flex; gap: 8px; font-family: 'Montserrat', monospace;">
+          <span style="background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 6px; min-width: 35px; text-align: center;">${days}</span>
+          <span style="font-weight: 500;">g</span>
+          <span style="background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 6px; min-width: 35px; text-align: center;">${hours}</span>
+          <span style="font-weight: 500;">h</span>
+          <span style="background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 6px; min-width: 35px; text-align: center;">${minutes}</span>
+          <span style="font-weight: 500;">m</span>
+          <span style="background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 6px; min-width: 35px; text-align: center;">${seconds}</span>
+          <span style="font-weight: 500;">s</span>
+        </div>
+      </div>
+    `;
   }
   
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
+  updatePremiumCountdown();
+  setInterval(updatePremiumCountdown, 1000);
 }
 
 // Inizializza i sistemi quando la pagina è caricata
@@ -6079,6 +6131,7 @@ document.addEventListener('DOMContentLoaded', function() {
   setTimeout(() => {
     initializeBehavioralAnalytics();
     initializeHomepageCountdown();
+    initializePremiumCountdown();
     
     // Inizializza PWA
     registerServiceWorker();
