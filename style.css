@@ -9864,8 +9864,152 @@ nav button[onclick="openFeedbackModal()"]:hover {
   }
 }
 
+/* System Controls Styles */
+.system-controls-premium {
+  display: grid;
+  gap: 30px;
+}
+
+.control-section {
+  background: #fff;
+  border-radius: 15px;
+  padding: 25px;
+  border: 2px solid #e8ecf0;
+}
+
+.control-section .section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #002147;
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.control-buttons {
+  display: grid;
+  gap: 15px;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  border: 2px solid #e8ecf0;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.control-btn:hover {
+  border-color: #c8102e;
+  box-shadow: 0 5px 15px rgba(200, 16, 46, 0.1);
+  transform: translateY(-2px);
+}
+
+.control-btn.sync {
+  border-color: #007bff;
+}
+
+.control-btn.sync:hover {
+  border-color: #0056b3;
+  box-shadow: 0 5px 15px rgba(0, 123, 255, 0.2);
+}
+
+.control-btn.danger {
+  border-color: #dc3545;
+}
+
+.control-btn.danger:hover {
+  border-color: #c82333;
+  box-shadow: 0 5px 15px rgba(220, 53, 69, 0.2);
+}
+
+.control-btn .btn-icon {
+  font-size: 24px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.btn-content {
+  flex: 1;
+}
+
+.control-btn .btn-text {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #002147;
+  margin-bottom: 5px;
+}
+
+.control-btn .btn-desc {
+  display: block;
+  font-size: 14px;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.system-status {
+  display: grid;
+  gap: 15px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px solid #e8ecf0;
+}
+
+.status-label {
+  font-weight: 600;
+  color: #002147;
+}
+
+.status-value {
+  font-weight: 700;
+  color: #28a745;
+  background: rgba(40, 167, 69, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
 /* Responsive admin panel */
 @media (max-width: 768px) {
+  .control-btn {
+    padding: 15px;
+    gap: 10px;
+  }
+  
+  .control-btn .btn-icon {
+    font-size: 20px;
+    min-width: 30px;
+  }
+  
+  .control-btn .btn-text {
+    font-size: 14px;
+  }
+  
+  .control-btn .btn-desc {
+    font-size: 12px;
+  }
+  
+  .status-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    text-align: center;
+  }
+  
   .user-details-actions {
     flex-direction: column;
   }

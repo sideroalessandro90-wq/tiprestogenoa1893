@@ -5524,6 +5524,9 @@ function showAdminTab(tabName) {
     case 'matches':
       initMatchManagement();
       break;
+    case 'system':
+      loadSystemControls();
+      break;
     case 'analytics':
       loadAnalyticsAdmin();
       break;
@@ -8777,4 +8780,117 @@ function syncCalendarSeason() {
 // Modifica partita (placeholder per future implementazioni)
 function editMatch(matchId) {
   showToast('Funzione in sviluppo - Modifica partita', 'info');
+}
+
+// 🧹 Funzione di pulizia completa abbonamenti per admin
+async function clearAllAbbonamenti() {
+  if (!confirm('⚠️ ATTENZIONE! Questa azione eliminerà TUTTI gli abbonamenti sia da Firebase che dal localStorage. Sei sicuro?')) {
+    return;
+  }
+  
+  try {
+    console.log('🧹 Avvio pulizia completa abbonamenti...');
+    
+    // 1. Pulisci Firebase
+    if (db) {
+      const snapshot = await db.collection('abbonamenti').get();
+      const batch = db.batch();
+      
+      snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      await batch.commit();
+      console.log('✅ Firebase abbonamenti eliminati');
+    }
+    
+    // 2. Pulisci localStorage
+    localStorage.removeItem('abbonamenti');
+    console.log('✅ localStorage abbonamenti eliminato');
+    
+    // 3. Pulisci array globale
+    abbonamenti = [];
+    
+    // 4. Aggiorna UI
+    loadHomeListings();
+    updateSystemStatus();
+    
+    showToast('✅ Tutti gli abbonamenti sono stati eliminati completamente', 'success');
+    console.log('✅ Pulizia completa completata');
+    
+  } catch (error) {
+    console.error('❌ Errore durante la pulizia:', error);
+    showToast('❌ Errore durante la pulizia degli abbonamenti', 'error');
+  }
+}
+
+// 🔄 Funzione per forzare sincronizzazione solo da Firebase (no localStorage upload)
+async function forceFirebaseSync() {
+  if (!db) {
+    showToast('❌ Firebase non disponibile', 'error');
+    return;
+  }
+  
+  try {
+    console.log('🔄 Forzando sincronizzazione solo da Firebase...');
+    
+    // Carica SOLO da Firebase
+    const snapshot = await db.collection('abbonamenti').get();
+    abbonamenti = [];
+    
+    snapshot.forEach(doc => {
+      abbonamenti.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    // Aggiorna localStorage con i dati Firebase
+    localStorage.setItem('abbonamenti', JSON.stringify(abbonamenti));
+    
+    // Aggiorna UI
+    loadHomeListings();
+    updateSystemStatus();
+    
+    console.log(`✅ Sincronizzazione forzata: ${abbonamenti.length} abbonamenti da Firebase`);
+    showToast(`✅ Sincronizzazione completata: ${abbonamenti.length} abbonamenti`, 'success');
+    
+  } catch (error) {
+    console.error('❌ Errore sincronizzazione forzata:', error);
+    showToast('❌ Errore durante la sincronizzazione', 'error');
+  }
+}
+
+// 🔧 Carica controlli sistema
+function loadSystemControls() {
+  console.log('⚙️ Caricamento controlli sistema...');
+  updateSystemStatus();
+}
+
+// 📊 Aggiorna stato sistema
+function updateSystemStatus() {
+  try {
+    // Stato Firebase
+    const firebaseStatus = document.getElementById('firebaseStatus');
+    if (firebaseStatus) {
+      firebaseStatus.textContent = db ? 'Connesso ✅' : 'Disconnesso ❌';
+      firebaseStatus.style.color = db ? '#28a745' : '#dc3545';
+    }
+    
+    // Conta localStorage
+    const localStorageCount = document.getElementById('localStorageCount');
+    if (localStorageCount) {
+      const localAbbonamenti = JSON.parse(localStorage.getItem('abbonamenti') || '[]');
+      localStorageCount.textContent = localAbbonamenti.length;
+    }
+    
+    // Conta array globale
+    const arrayCount = document.getElementById('arrayAbbonamenti');
+    if (arrayCount) {
+      arrayCount.textContent = abbonamenti ? abbonamenti.length : 0;
+    }
+    
+  } catch (error) {
+    console.error('❌ Errore aggiornamento stato sistema:', error);
+  }
 }
