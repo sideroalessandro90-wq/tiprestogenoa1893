@@ -175,7 +175,7 @@
   <div id="userControls">
     <button type="button" id="loginBtn" onclick="toggleModal(true); return false;" style="display:none;">Login</button>
     <button type="button" id="logoutBtn" onclick="logout(); return false;" style="display:none;">Logout</button>
-    <div id="notificationBell" onclick="openNotifications()" title="Messaggi Chat">
+    <div id="notificationBell" onclick="openNotifications(); return false;" title="Messaggi Chat">
       <div class="bell-icon">🔔</div>
       <span id="notificationCount" class="notification-badge">0</span>
       <div id="notificationDropdown" class="notification-dropdown" style="display:none;">
@@ -443,7 +443,7 @@
         <div class="empty-icon">🎫</div>
         <h3 class="empty-title">Nessun abbonamento disponibile</h3>
         <p class="empty-text">Al momento non ci sono abbonamenti in vendita per i filtri selezionati.</p>
-        <button class="btn-premium btn-primary-premium" onclick="showSection('booking')">
+        <button class="btn-premium btn-primary-premium" onclick="showSection('booking'); return false;">
           <span class="btn-icon">➕</span>
           <span>Metti in Vendita</span>
         </button>
@@ -455,7 +455,7 @@
       <div class="cta-content">
         <h3 class="cta-title">Hai un abbonamento da vendere?</h3>
         <p class="cta-subtitle">Unisciti alla community di tifosi del Genoa e condividi la passione rossoblù</p>
-        <button class="cta-button" onclick="showSection('booking')">
+        <button class="cta-button" onclick="showSection('booking'); return false;">
           <span class="cta-button-icon">🚀</span>
           <span>Inizia a Vendere</span>
         </button>
@@ -656,12 +656,160 @@
     </div>
   </div>
 </section>
+<!-- Sezione Le tue Trattative Premium -->
 <section class="section" id="mySubscription">
-  <h2>Le tue Trattative</h2>
-  <div id="mySubscriptionContent"></div>
+  <div class="trattative-container-premium">
+    <div class="trattative-header-premium">
+      <div class="header-content">
+        <h1 class="trattative-title">
+          <span class="title-icon">🤝</span>
+          Le tue Trattative
+        </h1>
+        <p class="trattative-subtitle">Gestisci tutte le tue negoziazioni e abbonamenti in corso</p>
+      </div>
+      <div class="trattative-stats">
+        <div class="stat-pill">
+          <span class="stat-value" id="trattativeAttive">0</span>
+          <span class="stat-label">Attive</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-value" id="trattativeChiuse">0</span>
+          <span class="stat-label">Concluse</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="trattative-filters">
+      <button class="filter-tab active" data-filter="all">
+        <span class="tab-icon">📋</span>
+        Tutte
+      </button>
+      <button class="filter-tab" data-filter="active">
+        <span class="tab-icon">⚡</span>
+        In Corso
+      </button>
+      <button class="filter-tab" data-filter="completed">
+        <span class="tab-icon">✅</span>
+        Concluse
+      </button>
+      <button class="filter-tab" data-filter="cancelled">
+        <span class="tab-icon">❌</span>
+        Annullate
+      </button>
+    </div>
+    
+    <div class="trattative-content">
+      <div id="mySubscriptionContent" class="subscription-list-premium">
+        <!-- Contenuto caricato dinamicamente -->
+      </div>
+    </div>
+  </div>
 </section>
-<section class="section" id="ticket" style="cursor:pointer;">
-  <h2>Il mio Abbonamento</h2>
+
+<!-- Sezione Il mio Abbonamento Premium -->
+<section class="section" id="ticket">
+  <div class="ticket-container-premium">
+    <div class="ticket-header-premium">
+      <div class="header-background">
+        <div class="genoa-pattern-overlay"></div>
+      </div>
+      <div class="header-content">
+        <div class="ticket-badge">
+          <span class="badge-icon">🎫</span>
+          <span class="badge-text">Il Mio Abbonamento</span>
+        </div>
+        <h1 class="ticket-title">Stagione 2024/2025</h1>
+        <p class="ticket-subtitle">Gestisci il tuo abbonamento al Genoa CFC</p>
+      </div>
+    </div>
+    
+    <div class="ticket-dashboard">
+      <div class="ticket-info-cards">
+        <div class="info-card-premium">
+          <div class="card-header">
+            <div class="card-icon">🏟️</div>
+            <div class="card-title">Stadio Luigi Ferraris</div>
+          </div>
+          <div class="card-content">
+            <div class="info-row">
+              <span class="info-label">Settore:</span>
+              <span class="info-value" id="userSector">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Posto:</span>
+              <span class="info-value" id="userSeat">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Categoria:</span>
+              <span class="info-value" id="userCategory">-</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="info-card-premium">
+          <div class="card-header">
+            <div class="card-icon">⚽</div>
+            <div class="card-title">Prossima Partita</div>
+          </div>
+          <div class="card-content">
+            <div class="next-match-info">
+              <div class="match-teams">
+                <div class="team-logo">
+                  <img src="img/genoa.png" alt="Genoa" class="team-img">
+                </div>
+                <div class="vs-text">VS</div>
+                <div class="team-logo">
+                  <img src="img/parma.png" alt="Parma" class="team-img">
+                </div>
+              </div>
+              <div class="match-details">
+                <div class="match-date">14 Gennaio 2025</div>
+                <div class="match-time">ore 15:00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="info-card-premium">
+          <div class="card-header">
+            <div class="card-icon">📊</div>
+            <div class="card-title">Statistiche Stagione</div>
+          </div>
+          <div class="card-content">
+            <div class="stats-grid">
+              <div class="stat-item">
+                <span class="stat-number">12</span>
+                <span class="stat-text">Partite Casa</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-number">8</span>
+                <span class="stat-text">Presenze</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-number">67%</span>
+                <span class="stat-text">Utilizzo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="ticket-actions-premium">
+        <button class="action-btn-premium primary">
+          <span class="btn-icon">📱</span>
+          <span class="btn-text">QR Code Digitale</span>
+        </button>
+        <button class="action-btn-premium secondary">
+          <span class="btn-icon">📧</span>
+          <span class="btn-text">Invia via Email</span>
+        </button>
+        <button class="action-btn-premium secondary">
+          <span class="btn-icon">📤</span>
+          <span class="btn-text">Condividi</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- Sezione Contatti -->
@@ -700,9 +848,9 @@
         <p><strong>Privacy e GDPR</strong></p>
         <p>Questo servizio è completamente conforme alle normative europee sulla privacy. I tuoi dati rimangono sul tuo dispositivo.</p>
         <div class="legal-links">
-          <button onclick="showPrivacyPolicy()" class="legal-button">📄 Privacy Policy</button>
-          <button onclick="showCookieSettings()" class="legal-button">🍪 Cookie Settings</button>
-          <button onclick="EmailService.testEmail()" class="legal-button">📧 Test Email</button>
+          <button onclick="showPrivacyPolicy(); return false;" class="legal-button">📄 Privacy Policy</button>
+          <button onclick="showCookieSettings(); return false;" class="legal-button">🍪 Cookie Settings</button>
+          <button onclick="EmailService.testEmail(); return false;" class="legal-button">📧 Test Email</button>
         </div>
       </div>
     </div>
