@@ -369,12 +369,12 @@
               
               <div class="team-section-premium away-team">
                 <div class="team-logo-wrapper">
-                  <img src="img/parma.png" alt="Logo Parma FC" class="team-logo-premium">
+                  <img src="img/cremonese.png" alt="Logo Cremonese" class="team-logo-premium">
                   <div class="logo-glow-effect"></div>
                 </div>
                 <div class="team-details-premium">
-                  <span class="team-name-premium">PARMA</span>
-                  <span class="team-subtitle-premium">FC</span>
+                  <span class="team-name-premium">CREMONESE</span>
+                  <span class="team-subtitle-premium">US</span>
                 </div>
               </div>
             </div>
@@ -394,11 +394,11 @@
             </div>
             <div class="info-row">
               <span class="info-icon">📅</span>
-              <span class="info-text">Domenica 15 Dicembre 2025</span>
+              <span class="info-text">Mercoledì 29 Ottobre 2025</span>
             </div>
             <div class="info-row">
               <span class="info-icon">⏰</span>
-              <span class="info-text">ore 15:00</span>
+              <span class="info-text">ore 20:45</span>
             </div>
             <div class="info-row">
               <span class="info-icon">🎫</span>
@@ -427,7 +427,7 @@
               <span class="btn-icon">👁️</span>
               <span>Dettagli</span>
             </button>
-            <button type="button" class="btn-premium btn-primary-premium" onclick="apriTrattativa('Genoa vs Parma'); return false;">
+            <button type="button" class="btn-premium btn-primary-premium" onclick="apriTrattativa('Genoa vs Cremonese'); return false;">
               <span class="btn-icon">💬</span>
               <span>Tratta</span>
             </button>
@@ -759,12 +759,12 @@
                 </div>
                 <div class="vs-text">VS</div>
                 <div class="team-logo">
-                  <img src="img/parma.png" alt="Parma" class="team-img">
+                  <img src="img/cremonese.png" alt="Cremonese" class="team-img">
                 </div>
               </div>
               <div class="match-details">
-                <div class="match-date">14 Gennaio 2025</div>
-                <div class="match-time">ore 15:00</div>
+                <div class="match-date">29 Ottobre 2025</div>
+                <div class="match-time">ore 20:45</div>
               </div>
             </div>
           </div>
@@ -1040,6 +1040,11 @@
           <span class="tab-label">Moderazione</span>
           <span class="tab-badge alert" id="moderationBadge">0</span>
         </button>
+        <button type="button" class="admin-nav-tab" onclick="showAdminTab('matches'); return false;" data-tab="matches">
+          <span class="tab-icon">⚽</span>
+          <span class="tab-label">Gestione Partite</span>
+          <span class="tab-badge" id="matchesBadge">0</span>
+        </button>
         <button type="button" class="admin-nav-tab" onclick="showAdminTab('settings'); return false;" data-tab="settings">
           <span class="tab-icon">⚙️</span>
           <span class="tab-label">Impostazioni</span>
@@ -1132,6 +1137,103 @@
         </div>
       </div>
       
+      <!-- Tab Gestione Partite Premium -->
+      <div id="admin-matches" class="admin-tab-content-premium">
+        <div class="content-header-premium">
+          <div class="header-info">
+            <h2 class="content-title">⚽ Gestione Partite</h2>
+            <p class="content-description">Controllo completo delle partite, vendite e calendario stagionale</p>
+          </div>
+          <div class="header-actions">
+            <button type="button" onclick="openAddMatchModal(); return false;" class="action-btn add-match-btn">
+              <span class="btn-icon">➕</span>
+              <span class="btn-text">Aggiungi Partita</span>
+            </button>
+            <button type="button" onclick="syncCalendarSeason(); return false;" class="action-btn sync-btn">
+              <span class="btn-icon">🔄</span>
+              <span class="btn-text">Sincronizza Calendario</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Matches Overview Premium -->
+        <div class="matches-overview-premium">
+          <div class="overview-stats">
+            <div class="overview-stat-card">
+              <div class="stat-icon-container">
+                <span class="stat-icon">⚽</span>
+              </div>
+              <div class="stat-info">
+                <h4 class="stat-value" id="totalMatchesCount">0</h4>
+                <p class="stat-label">Totale Partite</p>
+              </div>
+            </div>
+            <div class="overview-stat-card">
+              <div class="stat-icon-container active">
+                <span class="stat-icon">🟢</span>
+              </div>
+              <div class="stat-info">
+                <h4 class="stat-value" id="activeMatchesCount">0</h4>
+                <p class="stat-label">Vendite Attive</p>
+              </div>
+            </div>
+            <div class="overview-stat-card">
+              <div class="stat-icon-container suspended">
+                <span class="stat-icon">⏸️</span>
+              </div>
+              <div class="stat-info">
+                <h4 class="stat-value" id="suspendedMatchesCount">0</h4>
+                <p class="stat-label">Vendite Sospese</p>
+              </div>
+            </div>
+            <div class="overview-stat-card">
+              <div class="stat-icon-container upcoming">
+                <span class="stat-icon">⏰</span>
+              </div>
+              <div class="stat-info">
+                <h4 class="stat-value" id="upcomingMatchesCount">0</h4>
+                <p class="stat-label">Prossime Partite</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Matches Controls -->
+        <div class="matches-controls-premium">
+          <div class="controls-row">
+            <div class="search-box">
+              <input type="text" id="matchSearchInput" placeholder="🔍 Cerca partite..." class="search-input">
+            </div>
+            <div class="filter-buttons">
+              <button type="button" class="filter-btn active" data-filter="all">Tutte</button>
+              <button type="button" class="filter-btn" data-filter="active">Attive</button>
+              <button type="button" class="filter-btn" data-filter="suspended">Sospese</button>
+              <button type="button" class="filter-btn" data-filter="upcoming">Prossime</button>
+              <button type="button" class="filter-btn" data-filter="completed">Completate</button>
+            </div>
+            <div class="bulk-actions">
+              <button type="button" onclick="bulkActivateMatches(); return false;" class="bulk-btn activate">
+                <span class="btn-icon">✅</span>
+                Attiva Selezionate
+              </button>
+              <button type="button" onclick="bulkSuspendMatches(); return false;" class="bulk-btn suspend">
+                <span class="btn-icon">⏸️</span>
+                Sospendi Selezionate
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Matches Table Premium -->
+        <div class="matches-table-premium">
+          <div class="table-container">
+            <div id="matchesTablePremium" class="matches-table">
+              <!-- Tabella partite caricata dinamicamente -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <!-- Tab Analytics -->
       <div id="admin-analytics" class="admin-tab-content">
         <div class="analytics-dashboard">
@@ -1196,6 +1298,138 @@
     </div>
   </div>
 </section>
+
+<!-- Modal Aggiungi Partita -->
+<div id="addMatchModal" class="modal">
+  <div class="modal-content-premium">
+    <div class="modal-header">
+      <h3 class="modal-title">⚽ Aggiungi Nuova Partita</h3>
+      <button type="button" onclick="closeAddMatchModal(); return false;" class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="addMatchForm" class="match-form-premium">
+        <div class="form-grid-match">
+          <!-- Informazioni Base Partita -->
+          <div class="form-section">
+            <h4 class="section-title">📅 Informazioni Partita</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="matchOpponent">Squadra Avversaria</label>
+                <input type="text" id="matchOpponent" placeholder="es. Lazio, Juventus..." required>
+              </div>
+              <div class="form-group">
+                <label for="matchType">Tipo Partita</label>
+                <select id="matchType" required>
+                  <option value="">Seleziona tipo</option>
+                  <option value="serie-a">Serie A</option>
+                  <option value="coppa-italia">Coppa Italia</option>
+                  <option value="champions">Champions League</option>
+                  <option value="europa">Europa League</option>
+                  <option value="amichevole">Amichevole</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="matchDate">Data Partita</label>
+                <input type="date" id="matchDate" required>
+              </div>
+              <div class="form-group">
+                <label for="matchTime">Ora Partita</label>
+                <input type="time" id="matchTime" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="matchVenue">Stadio</label>
+                <select id="matchVenue" required>
+                  <option value="">Seleziona stadio</option>
+                  <option value="luigi-ferraris">Stadio Luigi Ferraris (Casa)</option>
+                  <option value="away">Trasferta</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="matchRound">Giornata</label>
+                <input type="number" id="matchRound" min="1" max="38" placeholder="es. 15">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Controllo Vendite -->
+          <div class="form-section">
+            <h4 class="section-title">🎫 Controllo Vendite</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="salesStatus">Stato Vendite</label>
+                <select id="salesStatus" required>
+                  <option value="active">🟢 Vendite Attive</option>
+                  <option value="suspended">⏸️ Vendite Sospese</option>
+                  <option value="coming-soon">⏳ Prossimamente Attive</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="salesStartDate">Inizio Vendite</label>
+                <input type="datetime-local" id="salesStartDate">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="salesEndDate">Fine Vendite</label>
+                <input type="datetime-local" id="salesEndDate">
+              </div>
+              <div class="form-group">
+                <label for="maxTicketsPerUser">Max Biglietti per Utente</label>
+                <input type="number" id="maxTicketsPerUser" min="1" max="10" value="4">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Settori e Prezzi -->
+          <div class="form-section">
+            <h4 class="section-title">💰 Settori e Prezzi</h4>
+            <div class="sectors-config">
+              <div class="sector-item">
+                <label class="sector-label">
+                  <input type="checkbox" id="tribunaCentrale" checked>
+                  Tribuna Centrale
+                </label>
+                <input type="number" id="prezzoCentrale" placeholder="Prezzo €" min="0" step="0.01">
+              </div>
+              <div class="sector-item">
+                <label class="sector-label">
+                  <input type="checkbox" id="tribunaLaterale">
+                  Tribuna Laterale
+                </label>
+                <input type="number" id="prezzoLaterale" placeholder="Prezzo €" min="0" step="0.01">
+              </div>
+              <div class="sector-item">
+                <label class="sector-label">
+                  <input type="checkbox" id="distinti">
+                  Distinti
+                </label>
+                <input type="number" id="prezzoDistinti" placeholder="Prezzo €" min="0" step="0.01">
+              </div>
+              <div class="sector-item">
+                <label class="sector-label">
+                  <input type="checkbox" id="gradinate">
+                  Gradinate
+                </label>
+                <input type="number" id="prezzoGradinate" placeholder="Prezzo €" min="0" step="0.01">
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button type="button" onclick="closeAddMatchModal(); return false;" class="btn-secondary">Annulla</button>
+      <button type="button" onclick="saveNewMatch(); return false;" class="btn-primary">
+        <span class="btn-icon">💾</span>
+        Salva Partita
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- Modale Conferma Interesse -->
 <div class="modal" id="confermaInteresseModal">

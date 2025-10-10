@@ -5521,6 +5521,9 @@ function showAdminTab(tabName) {
     case 'users':
       loadUsersAdminPremium();
       break;
+    case 'matches':
+      initMatchManagement();
+      break;
     case 'analytics':
       loadAnalyticsAdmin();
       break;
@@ -8335,4 +8338,443 @@ async function syncAbbonamentiBidirectional() {
   } catch (error) {
     console.error('❌ Errore sync abbonamenti:', error);
   }
+}
+
+// Sistema di Gestione Partite Premium
+let currentMatches = [];
+
+// Inizializza il sistema di gestione partite
+function initMatchManagement() {
+  loadMatches();
+  updateMatchStats();
+  setupMatchFilters();
+  setupMatchSearch();
+}
+
+// Carica le partite dal localStorage o Firebase
+function loadMatches() {
+  try {
+    const storedMatches = localStorage.getItem('matches');
+    if (storedMatches) {
+      currentMatches = JSON.parse(storedMatches);
+    } else {
+      // Partite di esempio se non ci sono dati
+      currentMatches = [
+        {
+          id: 1,
+          opponent: 'Cremonese',
+          type: 'serie-a',
+          date: '2025-10-29',
+          time: '20:45',
+          venue: 'luigi-ferraris',
+          round: 10,
+          salesStatus: 'active',
+          salesStart: '2025-10-15T10:00',
+          salesEnd: '2025-10-29T18:00',
+          maxTicketsPerUser: 4,
+          sectors: {
+            'tribuna-centrale': { enabled: true, price: 35 },
+            'tribuna-laterale': { enabled: true, price: 25 },
+            'distinti': { enabled: true, price: 20 },
+            'gradinate': { enabled: true, price: 15 }
+          },
+          created: new Date().toISOString(),
+          updated: new Date().toISOString()
+        }
+      ];
+      saveMatches();
+    }
+    renderMatchesTable();
+  } catch (error) {
+    console.error('Errore nel caricamento partite:', error);
+    showToast('Errore nel caricamento delle partite', 'error');
+  }
+}
+
+// Salva le partite nel localStorage
+function saveMatches() {
+  try {
+    localStorage.setItem('matches', JSON.stringify(currentMatches));
+    updateMatchStats();
+  } catch (error) {
+    console.error('Errore nel salvataggio partite:', error);
+    showToast('Errore nel salvataggio delle partite', 'error');
+  }
+}
+
+// Aggiorna le statistiche delle partite
+function updateMatchStats() {
+  const total = currentMatches.length;
+  const active = currentMatches.filter(m => m.salesStatus === 'active').length;
+  const suspended = currentMatches.filter(m => m.salesStatus === 'suspended').length;
+  const upcoming = currentMatches.filter(m => new Date(m.date + 'T' + m.time) > new Date()).length;
+  
+  const totalElement = document.getElementById('totalMatchesCount');
+  const activeElement = document.getElementById('activeMatchesCount');
+  const suspendedElement = document.getElementById('suspendedMatchesCount');
+  const upcomingElement = document.getElementById('upcomingMatchesCount');
+  
+  if (totalElement) totalElement.textContent = total;
+  if (activeElement) activeElement.textContent = active;
+  if (suspendedElement) suspendedElement.textContent = suspended;
+  if (upcomingElement) upcomingElement.textContent = upcoming;
+}
+
+// Renderizza la tabella delle partite
+function renderMatchesTable() {
+  const tableContainer = document.getElementById('matchesTablePremium');
+  if (!tableContainer) return;
+  
+  if (currentMatches.length === 0) {
+    tableContainer.innerHTML = `
+      <div style="text-align: center; padding: 60px 20px; color: #6c757d;">
+        <div style="font-size: 48px; margin-bottom: 20px;">⚽</div>
+        <h3>Nessuna partita trovata</h3>
+        <p>Aggiungi la prima partita per iniziare la gestione del calendario</p>
+      </div>`;
+    return;
+  }
+  
+  let tableHTML = `
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="background: #f8f9fa; border-bottom: 2px solid #e8ecf0;">
+          <th style="padding: 15px; text-align: left; font-weight: 700; color: #002147;">
+            <input type="checkbox" id="selectAllMatches" onchange="toggleAllMatches()">
+          </th>
+          <th style="padding: 15px; text-align: left; font-weight: 700; color: #002147;">Partita</th>
+          <th style="padding: 15px; text-align: left; font-weight: 700; color: #002147;">Data/Ora</th>
+          <th style="padding: 15px; text-align: left; font-weight: 700; color: #002147;">Tipo</th>
+          <th style="padding: 15px; text-align: left; font-weight: 700; color: #002147;">Stato Vendite</th>
+          <th style="padding: 15px; text-align: left; font-weight: 700; color: #002147;">Settori</th>
+          <th style="padding: 15px; text-align: center; font-weight: 700; color: #002147;">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>`;
+  
+  currentMatches.forEach(match => {
+    const matchDate = new Date(match.date + 'T' + match.time);
+    const isUpcoming = matchDate > new Date();
+    const statusIcon = match.salesStatus === 'active' ? '🟢' : match.salesStatus === 'suspended' ? '⏸️' : '⏳';
+    const statusColor = match.salesStatus === 'active' ? '#28a745' : match.salesStatus === 'suspended' ? '#ffc107' : '#007bff';
+    
+    const enabledSectors = Object.keys(match.sectors).filter(key => match.sectors[key].enabled);
+    const sectorsDisplay = enabledSectors.map(sector => {
+      const sectorName = sector.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+      return `${sectorName} (€${match.sectors[sector].price})`;
+    }).join(', ');
+    
+    tableHTML += `
+      <tr style="border-bottom: 1px solid #e8ecf0;" class="match-row" data-match-id="${match.id}">
+        <td style="padding: 15px;">
+          <input type="checkbox" class="match-checkbox" value="${match.id}">
+        </td>
+        <td style="padding: 15px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="img/genoa.png" alt="Genoa" style="width: 30px; height: 30px; border-radius: 50%;">
+            <span style="font-weight: 600;">vs</span>
+            <img src="img/${slugify(match.opponent)}.png" alt="${match.opponent}" style="width: 30px; height: 30px; border-radius: 50%;" onerror="this.src='img/default-team.svg'">
+            <div>
+              <div style="font-weight: 600; color: #002147;">Genoa - ${match.opponent}</div>
+              <div style="font-size: 12px; color: #6c757d;">Giornata ${match.round}</div>
+            </div>
+          </div>
+        </td>
+        <td style="padding: 15px;">
+          <div style="font-weight: 600; color: #002147;">${formatDate(match.date)}</div>
+          <div style="font-size: 12px; color: #6c757d;">${match.time}</div>
+        </td>
+        <td style="padding: 15px;">
+          <span style="background: #e8ecf0; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase;">
+            ${match.type.replace('-', ' ')}
+          </span>
+        </td>
+        <td style="padding: 15px;">
+          <span style="color: ${statusColor}; font-weight: 600; font-size: 14px;">
+            ${statusIcon} ${match.salesStatus.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+          </span>
+        </td>
+        <td style="padding: 15px; font-size: 12px; color: #6c757d; max-width: 200px;">
+          ${sectorsDisplay}
+        </td>
+        <td style="padding: 15px; text-align: center;">
+          <div style="display: flex; gap: 5px; justify-content: center;">
+            <button onclick="editMatch(${match.id}); return false;" style="background: #007bff; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" title="Modifica">✏️</button>
+            <button onclick="toggleMatchSales(${match.id}); return false;" style="background: ${match.salesStatus === 'active' ? '#ffc107' : '#28a745'}; color: ${match.salesStatus === 'active' ? 'black' : 'white'}; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" title="${match.salesStatus === 'active' ? 'Sospendi' : 'Attiva'}">
+              ${match.salesStatus === 'active' ? '⏸️' : '▶️'}
+            </button>
+            <button onclick="deleteMatch(${match.id}); return false;" style="background: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" title="Elimina">🗑️</button>
+          </div>
+        </td>
+      </tr>`;
+  });
+  
+  tableHTML += `</tbody></table>`;
+  tableContainer.innerHTML = tableHTML;
+}
+
+// Setup filtri partite
+function setupMatchFilters() {
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  filterButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      filterButtons.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      filterMatches(this.dataset.filter);
+    });
+  });
+}
+
+// Setup ricerca partite
+function setupMatchSearch() {
+  const searchInput = document.getElementById('matchSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      const searchTerm = this.value.toLowerCase();
+      filterMatchesBySearch(searchTerm);
+    });
+  }
+}
+
+// Filtra partite per tipo
+function filterMatches(filter) {
+  const rows = document.querySelectorAll('.match-row');
+  rows.forEach(row => {
+    const matchId = parseInt(row.dataset.matchId);
+    const match = currentMatches.find(m => m.id === matchId);
+    let show = true;
+    
+    switch(filter) {
+      case 'active':
+        show = match.salesStatus === 'active';
+        break;
+      case 'suspended':
+        show = match.salesStatus === 'suspended';
+        break;
+      case 'upcoming':
+        show = new Date(match.date + 'T' + match.time) > new Date();
+        break;
+      case 'completed':
+        show = new Date(match.date + 'T' + match.time) < new Date();
+        break;
+      default:
+        show = true;
+    }
+    
+    row.style.display = show ? '' : 'none';
+  });
+}
+
+// Filtra partite per ricerca
+function filterMatchesBySearch(searchTerm) {
+  const rows = document.querySelectorAll('.match-row');
+  rows.forEach(row => {
+    const matchId = parseInt(row.dataset.matchId);
+    const match = currentMatches.find(m => m.id === matchId);
+    const searchContent = `${match.opponent} ${match.type} ${formatDate(match.date)} ${match.time}`.toLowerCase();
+    const show = searchContent.includes(searchTerm);
+    row.style.display = show ? '' : 'none';
+  });
+}
+
+// Apri modal per aggiungere partita
+function openAddMatchModal() {
+  const modal = document.getElementById('addMatchModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    clearMatchForm();
+  }
+}
+
+// Chiudi modal aggiungi partita
+function closeAddMatchModal() {
+  const modal = document.getElementById('addMatchModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+// Pulisci form partita
+function clearMatchForm() {
+  const form = document.getElementById('addMatchForm');
+  if (form) {
+    form.reset();
+    // Reset checkboxes
+    document.getElementById('tribunaCentrale').checked = true;
+    document.getElementById('tribunaLaterale').checked = false;
+    document.getElementById('distinti').checked = false;
+    document.getElementById('gradinate').checked = false;
+  }
+}
+
+// Salva nuova partita
+function saveNewMatch() {
+  const form = document.getElementById('addMatchForm');
+  if (!form) return;
+  
+  // Validazione form
+  const opponent = document.getElementById('matchOpponent').value.trim();
+  const type = document.getElementById('matchType').value;
+  const date = document.getElementById('matchDate').value;
+  const time = document.getElementById('matchTime').value;
+  const venue = document.getElementById('matchVenue').value;
+  const round = document.getElementById('matchRound').value;
+  const salesStatus = document.getElementById('salesStatus').value;
+  
+  if (!opponent || !type || !date || !time || !venue || !salesStatus) {
+    showToast('Compila tutti i campi obbligatori', 'error');
+    return;
+  }
+  
+  // Controlla duplicati
+  const existingMatch = currentMatches.find(m => 
+    m.opponent.toLowerCase() === opponent.toLowerCase() && 
+    m.date === date && 
+    m.time === time
+  );
+  
+  if (existingMatch) {
+    showToast('Esiste già una partita con questi parametri', 'error');
+    return;
+  }
+  
+  // Costruisci oggetto partita
+  const newMatch = {
+    id: Date.now(),
+    opponent: opponent,
+    type: type,
+    date: date,
+    time: time,
+    venue: venue,
+    round: parseInt(round) || null,
+    salesStatus: salesStatus,
+    salesStart: document.getElementById('salesStartDate').value || null,
+    salesEnd: document.getElementById('salesEndDate').value || null,
+    maxTicketsPerUser: parseInt(document.getElementById('maxTicketsPerUser').value) || 4,
+    sectors: {
+      'tribuna-centrale': {
+        enabled: document.getElementById('tribunaCentrale').checked,
+        price: parseFloat(document.getElementById('prezzoCentrale').value) || 0
+      },
+      'tribuna-laterale': {
+        enabled: document.getElementById('tribunaLaterale').checked,
+        price: parseFloat(document.getElementById('prezzoLaterale').value) || 0
+      },
+      'distinti': {
+        enabled: document.getElementById('distinti').checked,
+        price: parseFloat(document.getElementById('prezzoDistinti').value) || 0
+      },
+      'gradinate': {
+        enabled: document.getElementById('gradinate').checked,
+        price: parseFloat(document.getElementById('prezzoGradinate').value) || 0
+      }
+    },
+    created: new Date().toISOString(),
+    updated: new Date().toISOString()
+  };
+  
+  // Aggiungi partita e salva
+  currentMatches.push(newMatch);
+  saveMatches();
+  renderMatchesTable();
+  closeAddMatchModal();
+  
+  showToast(`Partita ${opponent} aggiunta con successo!`, 'success');
+}
+
+// Attiva/Sospendi vendita partita
+function toggleMatchSales(matchId) {
+  const match = currentMatches.find(m => m.id === matchId);
+  if (!match) return;
+  
+  const newStatus = match.salesStatus === 'active' ? 'suspended' : 'active';
+  match.salesStatus = newStatus;
+  match.updated = new Date().toISOString();
+  
+  saveMatches();
+  renderMatchesTable();
+  
+  const statusText = newStatus === 'active' ? 'attivate' : 'sospese';
+  showToast(`Vendite per ${match.opponent} ${statusText}`, 'success');
+}
+
+// Elimina partita
+function deleteMatch(matchId) {
+  const match = currentMatches.find(m => m.id === matchId);
+  if (!match) return;
+  
+  if (confirm(`Sei sicuro di voler eliminare la partita contro ${match.opponent}?`)) {
+    currentMatches = currentMatches.filter(m => m.id !== matchId);
+    saveMatches();
+    renderMatchesTable();
+    showToast(`Partita ${match.opponent} eliminata`, 'success');
+  }
+}
+
+// Seleziona/Deseleziona tutte le partite
+function toggleAllMatches() {
+  const selectAll = document.getElementById('selectAllMatches');
+  const checkboxes = document.querySelectorAll('.match-checkbox');
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = selectAll.checked;
+  });
+}
+
+// Attiva partite selezionate in massa
+function bulkActivateMatches() {
+  const selectedMatches = getSelectedMatches();
+  if (selectedMatches.length === 0) {
+    showToast('Seleziona almeno una partita', 'error');
+    return;
+  }
+  
+  selectedMatches.forEach(matchId => {
+    const match = currentMatches.find(m => m.id === matchId);
+    if (match) {
+      match.salesStatus = 'active';
+      match.updated = new Date().toISOString();
+    }
+  });
+  
+  saveMatches();
+  renderMatchesTable();
+  showToast(`${selectedMatches.length} partite attivate`, 'success');
+}
+
+// Sospendi partite selezionate in massa
+function bulkSuspendMatches() {
+  const selectedMatches = getSelectedMatches();
+  if (selectedMatches.length === 0) {
+    showToast('Seleziona almeno una partita', 'error');
+    return;
+  }
+  
+  selectedMatches.forEach(matchId => {
+    const match = currentMatches.find(m => m.id === matchId);
+    if (match) {
+      match.salesStatus = 'suspended';
+      match.updated = new Date().toISOString();
+    }
+  });
+  
+  saveMatches();
+  renderMatchesTable();
+  showToast(`${selectedMatches.length} partite sospese`, 'success');
+}
+
+// Ottieni partite selezionate
+function getSelectedMatches() {
+  const checkboxes = document.querySelectorAll('.match-checkbox:checked');
+  return Array.from(checkboxes).map(cb => parseInt(cb.value));
+}
+
+// Sincronizza calendario stagionale (placeholder per future integrazioni)
+function syncCalendarSeason() {
+  showToast('Funzione in sviluppo - Sincronizzazione calendario Serie A', 'info');
+}
+
+// Modifica partita (placeholder per future implementazioni)
+function editMatch(matchId) {
+  showToast('Funzione in sviluppo - Modifica partita', 'info');
 }
