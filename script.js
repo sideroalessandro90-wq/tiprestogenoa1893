@@ -305,7 +305,7 @@ let loggedInUser = null;
 let users = []; // Cache locale per performance
 let abbonamenti = []; // Cache locale per performance
 
-// 🚀 FIREBASE-ONLY HELPER FUNCTIONS
+// � FIREBASE-ONLY SERVICE COMPLETO
 const FirebaseOnlyService = {
   // --- UTENTI ---
   async loadUsers() {
@@ -332,6 +332,16 @@ const FirebaseOnlyService = {
       return userData;
     } catch (error) {
       console.error('❌ Errore salvataggio utente:', error);
+      throw error;
+    }
+  },
+
+  async deleteUser(userId) {
+    try {
+      await db.collection('users').doc(userId).delete();
+      await this.loadUsers(); // Ricarica cache
+    } catch (error) {
+      console.error('❌ Errore eliminazione utente:', error);
       throw error;
     }
   },
@@ -378,6 +388,115 @@ const FirebaseOnlyService = {
     } catch (error) {
       console.error('❌ Errore eliminazione abbonamento:', error);
       throw error;
+    }
+  },
+
+  async clearAllAbbonamenti() {
+    try {
+      const batch = db.batch();
+      const snapshot = await db.collection('abbonamenti').get();
+      snapshot.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      abbonamenti = [];
+      console.log('🗑️ Tutti gli abbonamenti eliminati da Firebase');
+    } catch (error) {
+      console.error('❌ Errore eliminazione tutti abbonamenti:', error);
+      throw error;
+    }
+  },
+
+  // --- FEEDBACK ---
+  async loadFeedbacks() {
+    try {
+      const snapshot = await db.collection('feedback').get();
+      const feedbacks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`✅ Caricati ${feedbacks.length} feedback da Firebase`);
+      return feedbacks;
+    } catch (error) {
+      console.error('❌ Errore caricamento feedback:', error);
+      return [];
+    }
+  },
+
+  async saveFeedback(feedbackData) {
+    try {
+      if (feedbackData.id) {
+        await db.collection('feedback').doc(feedbackData.id).set({
+          ...feedbackData,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } else {
+        const docRef = await db.collection('feedback').add({
+          ...feedbackData,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        feedbackData.id = docRef.id;
+      }
+      return feedbackData;
+    } catch (error) {
+      console.error('❌ Errore salvataggio feedback:', error);
+      throw error;
+    }
+  },
+
+  // --- ANALYTICS ---
+  async loadAnalytics() {
+    try {
+      const snapshot = await db.collection('user_analytics').get();
+      const analytics = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`✅ Caricati ${analytics.length} eventi analytics da Firebase`);
+      return analytics;
+    } catch (error) {
+      console.error('❌ Errore caricamento analytics:', error);
+      return [];
+    }
+  },
+
+  async saveAnalytics(analyticsData) {
+    try {
+      const docRef = await db.collection('user_analytics').add({
+        ...analyticsData,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      return { id: docRef.id, ...analyticsData };
+    } catch (error) {
+      console.error('❌ Errore salvataggio analytics:', error);
+      throw error;
+    }
+  },
+
+  // --- STATISTICHE ADMIN ---
+  async getAdminStats() {
+    try {
+      const [usersSnapshot, abbonamentiSnapshot, feedbackSnapshot] = await Promise.all([
+        db.collection('users').get(),
+        db.collection('abbonamenti').get(), 
+        db.collection('feedback').get()
+      ]);
+
+      const stats = {
+        totalUsers: usersSnapshot.size,
+        totalAbbonamenti: abbonamentiSnapshot.size,
+        abbonamentiDisponibili: abbonamentiSnapshot.docs.filter(doc => doc.data().disponibile === true).length,
+        abbonamentiVenduti: abbonamentiSnapshot.docs.filter(doc => doc.data().venduto === true).length,
+        totalFeedback: feedbackSnapshot.size,
+        feedbackNuovi: feedbackSnapshot.docs.filter(doc => doc.data().status === 'new').length,
+        timestamp: Date.now()
+      };
+
+      console.log('📊 Statistiche Firebase caricate:', stats);
+      return stats;
+    } catch (error) {
+      console.error('❌ Errore caricamento statistiche:', error);
+      return {
+        totalUsers: 0,
+        totalAbbonamenti: 0,
+        abbonamentiDisponibili: 0,
+        abbonamentiVenduti: 0,
+        totalFeedback: 0,
+        feedbackNuovi: 0,
+        timestamp: Date.now()
+      };
     }
   }
 };
@@ -447,6 +566,38 @@ async function loadAbbonamenti() {
     
   } catch (error) {
     console.error('❌ Errore caricamento abbonamenti:', error);
+  }
+}
+
+// 🔥 AGGIORNA ADMIN PANEL CON DATI FIREBASE REALI
+async function updateAdminPanelStats() {
+  try {
+    console.log('📊 Aggiornamento statistiche admin panel da Firebase...');
+    
+    const stats = await FirebaseOnlyService.getAdminStats();
+    
+    // Aggiorna contatori principali
+    const elements = {
+      'totalUsersCount': stats.totalUsers,
+      'totalAbbonamentiCount': stats.totalAbbonamenti,
+      'availableAbbonamentiCount': stats.abbonamentiDisponibili,
+      'soldAbbonamentiCount': stats.abbonamentiVenduti,
+      'totalFeedbackCount': stats.totalFeedback,
+      'newFeedbackCount': stats.feedbackNuovi
+    };
+
+    Object.entries(elements).forEach(([elementId, value]) => {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.textContent = value;
+        console.log(`✅ ${elementId}: ${value}`);
+      }
+    });
+
+    console.log('✅ Statistiche admin panel aggiornate con dati Firebase reali');
+    return stats;
+  } catch (error) {
+    console.error('❌ Errore aggiornamento statistiche:', error);
   }
 }
 
@@ -592,19 +743,16 @@ function showSection(id) {
     } else if (id === 'mySubscription') {
       loadMySubscription();
     } else if (id === 'admin') {
-      // Carica admin panel con dati Firebase
-      updateAdminStats().then(() => {
-        console.log('📊 Statistiche admin aggiornate');
+      // 🔥 FIREBASE-ONLY: Carica admin panel completamente da Firebase
+      updateAdminPanelStats().then(() => {
+        console.log('📊 Statistiche admin aggiornate da Firebase');
       });
-      loadUsersAdmin().then(() => {
-        console.log('👥 Utenti admin caricati');
+      loadUsersAdminPremium().then(() => {
+        console.log('👥 Utenti admin caricati da Firebase');
       });
       loadAnalyticsAdmin().then(() => {
-        console.log('📈 Analytics admin caricati');
+        console.log('📈 Analytics admin caricati da Firebase');
       });
-      
-      // Auto-test sistema per admin
-      runSystemTestOnAdmin();
     }
   } catch (error) {
     console.error(`Errore nel caricamento della sezione ${id}:`, error);
@@ -1364,29 +1512,12 @@ function initializeScrollAnimations() {
 // Carica utenti con interfaccia premium
 async function loadUsersAdminPremium() {
   try {
-    console.log('🔄 Caricamento utenti admin premium...');
+    console.log('🔄 Caricamento utenti admin premium da Firebase...');
     
-    let allUsers = [];
+    // 🔥 FIREBASE-ONLY: Carica utenti solo da Firebase
+    const allUsers = await FirebaseOnlyService.loadUsers();
     
-    try {
-      // PRIORITÀ 1: Firebase
-      const usersSnapshot = await db.collection('users').get();
-      usersSnapshot.forEach(doc => {
-        const data = doc.data();
-        allUsers.push({
-          uid: doc.id,
-          ...data,
-          timestamp: data.timestamp?.toMillis() || Date.now(),
-          lastLogin: data.lastLogin?.toMillis() || Date.now()
-        });
-      });
-      console.log('✅ Utenti caricati da Firebase:', allUsers.length);
-    } catch (firebaseError) {
-      console.log('📱 Firebase non disponibile, uso localStorage');
-      allUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    }
-    
-    // Aggiorna contatori
+    // Aggiorna contatori con dati Firebase reali
     updateUsersCounters(allUsers);
     
     // Renderizza tabella premium
@@ -1394,6 +1525,11 @@ async function loadUsersAdminPremium() {
     
     // Inizializza filtri e ricerca
     initializeUsersFilters(allUsers);
+    
+    // Aggiorna statistiche admin panel
+    await updateAdminPanelStats();
+    
+    console.log('✅ Admin utenti caricato completamente da Firebase');
     
   } catch (error) {
     console.error('❌ Errore caricamento utenti admin:', error);
@@ -5077,11 +5213,8 @@ async function submitFeedback() {
   }
   
   try {
-    // Salva in Firebase
-    await saveFeedbackToFirebase(feedbackData);
-    
-    // Salva backup locale
-    saveFeedbackToLocalStorage(feedbackData);
+    // 🔥 FIREBASE-ONLY: Salva feedback solo su Firebase
+    await FirebaseOnlyService.saveFeedback(feedbackData);
     
     // Invia email se richiesto
     if (feedbackData.contactInfo.consent && feedbackData.contactInfo.email) {
@@ -5127,21 +5260,7 @@ async function saveFeedbackToFirebase(feedback) {
   }
 }
 
-// Salva feedback in localStorage come backup
-function saveFeedbackToLocalStorage(feedback) {
-  try {
-    let localFeedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
-    localFeedbacks.push({
-      ...feedback,
-      id: Date.now().toString(),
-      synced: false
-    });
-    localStorage.setItem('feedbacks', JSON.stringify(localFeedbacks));
-    console.log('Feedback salvato localmente');
-  } catch (error) {
-    console.error('Errore salvataggio locale:', error);
-  }
-}
+// 🗑️ FIREBASE-ONLY: Funzione saveFeedbackToLocalStorage() eliminata - non più necessaria
 
 // Invia notifica email per feedback
 async function sendFeedbackEmailNotification(feedback) {
