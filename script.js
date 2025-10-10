@@ -7006,10 +7006,10 @@ async function testFirebaseSystem() {
     });
     console.log('✅ Firebase connesso correttamente');
     
-    // 2. Test popolamento demo data
-    console.log('2. 📝 Test popolamento dati demo...');
-    await populateFirebaseWithDemoData();
-    console.log('✅ Dati demo popolati');
+    // 2. Test popolamento demo data (DISABILITATO - nessun demo data)
+    console.log('2. 📝 Test popolamento dati demo... SALTATO (demo data rimossi)');
+    // await populateFirebaseWithDemoData(); // DISABILITATO - nessun demo data
+    console.log('✅ Test demo data saltato - sistema pulito');
     
     // 3. Test sync bidirezionale
     console.log('3. 🔄 Test sincronizzazione bidirezionale...');
@@ -7252,10 +7252,10 @@ async function initializeAdminDemoData() {
     const existingUsers = await db.collection('users').limit(1).get();
     const existingAbbonamenti = await db.collection('abbonamenti').limit(1).get();
     
-    // Se Firebase è vuoto, popola con dati realistici
+    // Se Firebase è vuoto, NON popolare più con demo data
     if (existingFeedbacks.empty) {
-      console.log('📝 Popolamento Firebase feedback...');
-      await populateFirebaseWithDemoData();
+      console.log('📝 Firebase vuoto - NESSUN demo data caricato (sistema pulito)');
+      // await populateFirebaseWithDemoData(); // DISABILITATO - nessun demo data
     } else {
       console.log('✅ Dati Firebase già presenti, sincronizzazione con localStorage...');
       await syncFirebaseToLocalStorage();
