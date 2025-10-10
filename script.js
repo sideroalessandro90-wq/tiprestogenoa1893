@@ -5347,7 +5347,6 @@ async function respondToFeedback(feedbackId) {
     }
     
     showToast('Risposta inviata con successo!', 'success');
-    loadFeedbacksAdmin();
     
   } catch (error) {
     console.error('Errore invio risposta:', error);
@@ -5369,7 +5368,6 @@ async function markFeedbackResolved(feedbackId) {
     }
     
     showToast('Feedback marcato come risolto', 'success');
-    loadFeedbacksAdmin();
     
   } catch (error) {
     console.error('Errore aggiornamento status:', error);
@@ -5387,7 +5385,6 @@ async function deleteFeedback(feedbackId) {
     feedbacksList = feedbacksList.filter(f => f.id !== feedbackId);
     
     showToast('Feedback eliminato', 'success');
-    loadFeedbacksAdmin();
     
   } catch (error) {
     console.error('Errore eliminazione feedback:', error);
