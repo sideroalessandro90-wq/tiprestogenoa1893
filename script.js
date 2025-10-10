@@ -5112,9 +5112,6 @@ function showAdminTab(tabName) {
   
   // Carica dati per il tab specifico
   switch(tabName) {
-    case 'feedback':
-      loadFeedbacksAdmin();
-      break;
     case 'users':
       loadUsersAdmin();
       break;
@@ -6059,7 +6056,7 @@ function testPWAInstallation() {
   return tests;
 }
 
-// Inizializza il sistema feedback quando la pagina è caricata
+// Inizializza i sistemi quando la pagina è caricata
 document.addEventListener('DOMContentLoaded', function() {
   // Aspetta che tutti gli script siano caricati
   setTimeout(() => {
