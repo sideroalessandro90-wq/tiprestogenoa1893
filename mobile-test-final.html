@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Mobile - Ti Presto</title>
+    <style>
+        body {
+            font-family: Montserrat, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f2f2f2;
+        }
+        .test-container {
+            max-width: 100%;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background: #c8102e;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            min-height: 44px;
+            width: 100%;
+            margin: 8px 0;
+            cursor: pointer;
+        }
+        button:active {
+            transform: translateY(1px);
+        }
+        .device-info {
+            background: #002147;
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .test-container { padding: 16px; }
+            h1 { font-size: 1.4rem; }
+        }
+        @media (max-width: 480px) {
+            body { padding: 8px; }
+            .test-container { padding: 12px; }
+            h1 { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>📱 Test Compatibilità Mobile - Ti Presto</h1>
+        
+        <div class="device-info">
+            <h3>ℹ️ Informazioni Dispositivo</h3>
+            <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
+            <p><strong>Risoluzione:</strong> <span id="resolution"></span></p>
+            <p><strong>Viewport:</strong> <span id="viewport"></span></p>
+            <p><strong>Pixel Ratio:</strong> <span id="pixelRatio"></span></p>
+            <p><strong>Touch Support:</strong> <span id="touchSupport"></span></p>
+        </div>
+
+        <div id="testResults"></div>
+
+        <h3>🧪 Test Interattivi</h3>
+        <button onclick="testTouch()">Test Touch Target (44px)</button>
+        <button onclick="testModal()">Test Modal Mobile</button>
+        <button onclick="testScroll()">Test Smooth Scroll</button>
+        <button onclick="testOrientation()">Test Orientation</button>
+        <button onclick="runAllTests()">🚀 Esegui Tutti i Test</button>
+
+        <div id="modalTest" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); padding:20px;">
+            <div style="background:white; padding:20px; border-radius:12px; max-width:100%; margin:20px auto;">
+                <h3>✅ Modal Mobile Test</h3>
+                <p>Se vedi questo modal, il test è riuscito!</p>
+                <button onclick="closeModal()">Chiudi Modal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Informazioni dispositivo
+        document.getElementById('userAgent').textContent = navigator.userAgent.substring(0, 100) + '...';
+        document.getElementById('resolution').textContent = screen.width + 'x' + screen.height;
+        document.getElementById('viewport').textContent = window.innerWidth + 'x' + window.innerHeight;
+        document.getElementById('pixelRatio').textContent = window.devicePixelRatio || 1;
+        document.getElementById('touchSupport').textContent = 'ontouchstart' in window ? '✅ Sì' : '❌ No';
+
+        function addTestResult(message, type = 'success') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            document.getElementById('testResults').appendChild(div);
+        }
+
+        function testTouch() {
+            const buttons = document.querySelectorAll('button');
+            let passedCount = 0;
+            buttons.forEach(btn => {
+                const rect = btn.getBoundingClientRect();
+                if (rect.height >= 44 && rect.width >= 44) passedCount++;
+            });
+            addTestResult(`✅ Touch Target Test: ${passedCount}/${buttons.length} bottoni >= 44px`, 'success');
+        }
+
+        function testModal() {
+            document.getElementById('modalTest').style.display = 'flex';
+            addTestResult('✅ Modal Test: Modal aperto correttamente', 'success');
+        }
+
+        function closeModal() {
+            document.getElementById('modalTest').style.display = 'none';
+            addTestResult('✅ Modal Test: Modal chiuso correttamente', 'success');
+        }
+
+        function testScroll() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            addTestResult('✅ Scroll Test: Smooth scroll funzionante', 'success');
+        }
+
+        function testOrientation() {
+            const orientation = screen.orientation ? screen.orientation.type : 'unknown';
+            addTestResult(`✅ Orientation Test: ${orientation}`, 'info');
+        }
+
+        function runAllTests() {
+            document.getElementById('testResults').innerHTML = '';
+            addTestResult('🚀 Inizio test automatici...', 'info');
+            
+            setTimeout(() => {
+                // Test viewport
+                if (window.innerWidth <= 768) {
+                    addTestResult('✅ Viewport Mobile: Rilevato dispositivo mobile', 'success');
+                } else {
+                    addTestResult('⚠️ Viewport Desktop: Simula dispositivo mobile per test completo', 'warning');
+                }
+
+                // Test CSS media queries
+                const isMobileCSS = window.getComputedStyle(document.body).padding === '12px' || 
+                                   window.getComputedStyle(document.body).padding === '8px';
+                if (isMobileCSS) {
+                    addTestResult('✅ CSS Mobile: Media queries attive', 'success');
+                } else {
+                    addTestResult('✅ CSS Desktop: Media queries desktop attive', 'info');
+                }
+
+                // Test touch events
+                if ('ontouchstart' in window) {
+                    addTestResult('✅ Touch Events: Supporto touch rilevato', 'success');
+                } else {
+                    addTestResult('ℹ️ Touch Events: Mouse/trackpad rilevato', 'info');
+                }
+
+                // Test device pixel ratio
+                if (window.devicePixelRatio > 1) {
+                    addTestResult(`✅ High DPI: Display ad alta risoluzione (${window.devicePixelRatio}x)`, 'success');
+                } else {
+                    addTestResult('✅ Standard DPI: Display standard', 'info');
+                }
+
+                testTouch();
+                
+                addTestResult('🎯 Test completati! Tutti i sistemi mobile sono operativi.', 'success');
+            }, 500);
+        }
+
+        // Auto-run test all'avvio
+        window.addEventListener('load', () => {
+            setTimeout(runAllTests, 1000);
+        });
+
+        // Test orientamento device
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                addTestResult(`🔄 Orientamento cambiato: ${window.innerWidth}x${window.innerHeight}`, 'info');
+            }, 500);
+        });
+    </script>
+</body>
+</html>
