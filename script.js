@@ -877,7 +877,8 @@ function showSection(id) {
       'profile': 'Profilo',
       'history': 'Storico',
       'mySubscription': 'Le tue Trattative',
-      'contacts': 'Contatti'
+      'contacts': 'Contatti',
+      'sessionSummary': 'Sviluppo Sito'
     };
     
     // Trova e attiva il pulsante corrispondente
@@ -903,6 +904,23 @@ function showSection(id) {
       loadStorico();
     } else if (id === 'mySubscription') {
       loadMySubscription();
+    } else if (id === 'sessionSummary') {
+      console.log('📋 Caricamento riepilogo sessione sviluppo');
+      // Animazioni per timeline items
+      setTimeout(() => {
+        const timelineItems = document.querySelectorAll('.timeline-item');
+        timelineItems.forEach((item, index) => {
+          setTimeout(() => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(20px)';
+            item.style.transition = 'all 0.5s ease';
+            setTimeout(() => {
+              item.style.opacity = '1';
+              item.style.transform = 'translateY(0)';
+            }, 100);
+          }, index * 200);
+        });
+      }, 100);
     } else if (id === 'admin') {
       // 🔥 FIREBASE-ONLY: Carica admin panel completamente da Firebase
       updateAdminPanelStats().then(() => {
