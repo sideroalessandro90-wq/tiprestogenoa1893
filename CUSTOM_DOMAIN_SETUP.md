@@ -1,11 +1,13 @@
-# 🌐 CONFIGURAZIONE DOMINIO www.tiprestogenoa1893.it
+# 🌐 CONFIGURAZIONE DOMINI PRINCIPALI - Ti Presto
 
 ## 🎯 OBIETTIVO
-Collegare il dominio personalizzato **www.tiprestogenoa1893.it** al sito Ti Presto deployato su Vercel.
+Collegare i domini principali **tiprestogenoa1893.it** e **www.tiprestogenoa1893.it** al sito Ti Presto deployato su Vercel.
 
 ## 📍 STATO ATTUALE
 - ✅ **Sito deployato**: https://tiprestogenoa1893-mpmlg7z9d-alessandro-sideros-projects.vercel.app/
-- 🔄 **Dominio da configurare**: www.tiprestogenoa1893.it
+- 🔄 **Domini da configurare**: 
+  - **tiprestogenoa1893.it** (dominio principale)
+  - **www.tiprestogenoa1893.it** (sottodominio www)
 - 📱 **Mobile ready**: 100% compatibile
 
 ## 🔧 STEP CONFIGURAZIONE
@@ -14,10 +16,17 @@ Collegare il dominio personalizzato **www.tiprestogenoa1893.it** al sito Ti Pres
 
 **Dashboard aperta**: https://vercel.com/alessandro-sideros-projects/tiprestogenoa1893/settings/domains
 
-1. **Clicca "Add Domain"**
-2. **Inserisci**: `tiprestogenoa1893.it`
-3. **Clicca "Add"**
-4. **Ripeti per**: `www.tiprestogenoa1893.it`
+1. **Primo dominio (principale)**:
+   - Clicca "Add Domain"
+   - Inserisci: `tiprestogenoa1893.it`
+   - Clicca "Add"
+
+2. **Secondo dominio (www)**:
+   - Clicca "Add Domain" 
+   - Inserisci: `www.tiprestogenoa1893.it`
+   - Clicca "Add"
+
+**Risultato**: Entrambi i domini saranno elencati nella dashboard
 
 ### **Step 2: Configurare DNS Records**
 
@@ -47,10 +56,11 @@ TTL: 3600 (or Auto)
 
 ## 🎯 RISULTATO FINALE
 
-Dopo la configurazione:
-- **Principale**: https://www.tiprestogenoa1893.it ✨
-- **Alternativo**: https://tiprestogenoa1893.it
-- **Backup**: https://tiprestogenoa1893-mpmlg7z9d-alessandro-sideros-projects.vercel.app/
+Dopo la configurazione, il sito sarà accessibile su:
+- **Dominio principale**: https://tiprestogenoa1893.it ✨
+- **Dominio www**: https://www.tiprestogenoa1893.it ✨
+- **Redirect automatico**: tiprestogenoa1893.it → www.tiprestogenoa1893.it
+- **Backup Vercel**: https://tiprestogenoa1893-mpmlg7z9d-alessandro-sideros-projects.vercel.app/
 
 ## ✅ FEATURES CHE SARANNO ATTIVE
 
